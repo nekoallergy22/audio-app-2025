@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { ArrowDownTrayIcon } from "@heroicons/react/24/solid";
 
 interface DownloadButtonProps {
   audioUrl: string | null;
@@ -48,12 +49,13 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
         <button
           onClick={handleDownload}
           disabled={!audioUrl}
-          className={`w-full py-2 px-4 rounded-md focus:outline-none ${
+          className={`w-full py-2 px-4 rounded-md focus:outline-none flex items-center justify-center ${
             audioUrl
               ? "bg-green-500 text-white hover:bg-green-600"
               : "bg-gray-200 text-gray-500 cursor-not-allowed"
           }`}
         >
+          <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
           ダウンロード
         </button>
       </div>
