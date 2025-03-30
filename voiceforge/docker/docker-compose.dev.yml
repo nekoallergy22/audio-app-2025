@@ -10,8 +10,11 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ..:/app
-      - /app/node_modules
+      - ..:/app  # ソースコードをマウント
+      - /app/node_modules  # node_modulesはコンテナ内のものを使用
+      - /app/.next  # .nextディレクトリもコンテナ内のものを使用
     environment:
       - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true  # ファイル変更検知のためのポーリングを有効化
+      - WATCHPACK_POLLING=true    # Next.jsのファイル監視にポーリングを使用
     restart: unless-stopped

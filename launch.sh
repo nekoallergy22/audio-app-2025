@@ -19,10 +19,17 @@ fi
 
 # Docker Compose commands
 if [ "$MODE" == "dev" ]; then
-    echo "Starting in development mode..."
+    echo "Starting in development mode with hot reloading enabled..."
+    
+    # 開発モードでは既存のコンテナを停止して再起動
+    docker compose -f $COMPOSE_FILE down
+    
+    # ホットリロードを有効にするための環境変数を設定
+    export WATCHPACK_POLLING=true
+    
+    # コンテナを起動（バックグラウンドではなくフォアグラウンドで実行してログを表示）
+    docker compose -f $COMPOSE_FILE up --build
 else
     echo "Starting in production mode..."
+    docker compose -f $COMPOSE_FILE up -d --build
 fi
-
-docker compose -f $COMPOSE_FILE up -d --build
-

@@ -8,11 +8,8 @@ COPY package.json package-lock.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy application source code
-COPY . .
-
 # Expose development server port
 EXPOSE 3000
 
-# Start development server
-CMD ["npm", "run", "dev"]
+# Start development server with watchpack polling enabled for better hot reloading in Docker
+CMD ["sh", "-c", "WATCHPACK_POLLING=true npm run dev"]
