@@ -11,10 +11,17 @@ import {
 
 interface AudioPlayerProps {
   audioUrl: string | null;
-  text?: string; // 生成時のテキストを受け取る
+  text?: string;
+  isLoading?: boolean;
+  segmentNumber?: number;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({
+  audioUrl,
+  text,
+  isLoading = false,
+  segmentNumber,
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -31,24 +38,18 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
     if (audioUrl && audioRef.current) {
       audioRef.current.load();
       setIsPlaying(false);
-      setDuration(0); // 初期化
+      setDuration(0);
     }
   }, [audioUrl]);
 
   const togglePlayPause = () => {
     if (!audioRef.current) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
+    isPlaying ? audioRef.current.pause() : audioRef.current.play();
     setIsPlaying(!isPlaying);
   };
 
   const stop = () => {
     if (!audioRef.current) return;
-
     audioRef.current.pause();
     audioRef.current.currentTime = 0;
     setIsPlaying(false);
@@ -80,22 +81,34 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
 
   return (
     <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-      {audioUrl ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-pulse flex space-x-2">
+            <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+            <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+            <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+          </div>
+          <span className="ml-3 text-gray-500">音声生成中...</span>
+        </div>
+      ) : audioUrl ? (
         <>
           <audio
             ref={audioRef}
-            key={audioUrl} // キーを追加して再レンダリングを強制
+            key={audioUrl}
             onLoadedMetadata={handleLoadedMetadata}
           >
             <source src={audioUrl} type="audio/mpeg" />
           </audio>
 
-          {/* テキストと再生時間表示エリア */}
+          {/* セグメント番号とテキスト表示 */}
           <div className="mb-4">
-            {text && (
-              <div className="text-gray-700 mb-2 line-clamp-2 break-words">
-                {text}
+            {segmentNumber && (
+              <div className="text-sm font-medium text-gray-500 mb-1">
+                セグメント {segmentNumber}
               </div>
+            )}
+            {text && (
+              <div className="text-gray-700 mb-2 break-words">{text}</div>
             )}
             <div className="text-sm text-gray-500">
               音声の長さ: {formatTime(duration)}
@@ -130,7 +143,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
         </>
       ) : (
         <div className="text-center text-gray-500 py-4">
-          音声が生成されていません
+          {text ? (
+            <>
+              <div className="mb-2 break-words">{text}</div>
+              <div>音声の生成に失敗しました</div>
+            </>
+          ) : (
+            "音声が生成されていません"
+          )}
         </div>
       )}
     </div>
