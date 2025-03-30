@@ -42,3 +42,6 @@ echo "VoiceForgeアプリケーションの追加ディレクトリとファイ�
 
 # install package
 docker exec -it voiceforge-app-dev npm install dotenv
+docker exec -it voiceforge-app-dev npm install @heroicons/react
+
+
