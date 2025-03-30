@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  voiceforge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    image: voiceforge-app:prod
+    container_name: voiceforge-app-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
