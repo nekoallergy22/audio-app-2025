@@ -11,7 +11,7 @@ import {
 
 interface AudioPlayerProps {
   audioUrl: string | null;
-  text?: string;
+  text?: string; // 生成時のテキストを受け取る
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
@@ -26,7 +26,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
     }
   };
 
-  // 音声URL変更時の処理
+  // 音声制御処理
   useEffect(() => {
     if (audioUrl && audioRef.current) {
       audioRef.current.load();
@@ -35,7 +35,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
     }
   }, [audioUrl]);
 
-  // 再生・停止処理
   const togglePlayPause = () => {
     if (!audioRef.current) return;
 
@@ -47,28 +46,36 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
     setIsPlaying(!isPlaying);
   };
 
+  const stop = () => {
+    if (!audioRef.current) return;
+
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    setIsPlaying(false);
+  };
+
   // ダウンロード処理
   const handleDownload = () => {
     if (!audioUrl) return;
 
-    const sanitizedText = (text || "voice")
+    const sanitizedFileName = (text || "voice")
       .replace(/[\\/:*?"<>|]/g, "_")
-      .substring(0, 30)
+      .substring(0, 50)
       .trim();
 
     const link = document.createElement("a");
     link.href = audioUrl;
-    link.download = `${sanitizedText}.mp3`;
+    link.download = `${sanitizedFileName}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   // 時間表示フォーマット
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -83,34 +90,42 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, text }) => {
             <source src={audioUrl} type="audio/mpeg" />
           </audio>
 
-          <div className="flex items-center justify-between">
+          {/* テキストと再生時間表示エリア */}
+          <div className="mb-4">
+            {text && (
+              <div className="text-gray-700 mb-2 line-clamp-2 break-words">
+                {text}
+              </div>
+            )}
             <div className="text-sm text-gray-500">
               音声の長さ: {formatTime(duration)}
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={togglePlayPause}
-                className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
-              >
-                {isPlaying ? (
-                  <PauseIcon className="h-5 w-5" />
-                ) : (
-                  <PlayIcon className="h-5 w-5" />
-                )}
-              </button>
-              <button
-                onClick={() => audioRef.current?.pause()}
-                className="p-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300"
-              >
-                <StopIcon className="h-5 w-5" />
-              </button>
-              <button
-                onClick={handleDownload}
-                className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600"
-              >
-                <ArrowDownTrayIcon className="h-5 w-5" />
-              </button>
-            </div>
+          </div>
+
+          {/* コントロールボタン */}
+          <div className="flex justify-end space-x-2">
+            <button
+              onClick={togglePlayPause}
+              className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+            >
+              {isPlaying ? (
+                <PauseIcon className="h-5 w-5" />
+              ) : (
+                <PlayIcon className="h-5 w-5" />
+              )}
+            </button>
+            <button
+              onClick={stop}
+              className="p-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors"
+            >
+              <StopIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={handleDownload}
+              className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+            </button>
           </div>
         </>
       ) : (

@@ -8,22 +8,14 @@ import VoiceSettings, {
   VoiceSettingsType,
 } from "../components/ui/VoiceSettings";
 import { validateText, validateVoiceSettings } from "../utils/validators";
-import { SpeakerWaveIcon } from "@heroicons/react/24/solid";
 
-// クライアントサイドのみでレンダリングするコンポーネント
 const AudioPlayer = dynamic(() => import("../components/ui/AudioPlayer"), {
   ssr: false,
 });
 
-const DownloadButton = dynamic(
-  () => import("../components/ui/DownloadButton"),
-  {
-    ssr: false,
-  }
-);
-
 export default function Home() {
   const [inputText, setInputText] = useState("");
+  const [generatedText, setGeneratedText] = useState("");
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettingsType>({
     language: "ja-JP",
     voiceName: "ja-JP-Wavenet-A",
@@ -45,13 +37,11 @@ export default function Home() {
   };
 
   const handleGenerateVoice = async () => {
-    // テキストの検証
     if (!validateText(inputText)) {
       setErrorMessage("テキストが入力されていないか、文字数制限を超えています");
       return;
     }
 
-    // 音声設定の検証
     if (
       !validateVoiceSettings(
         voiceSettings.language,
@@ -65,10 +55,10 @@ export default function Home() {
     }
 
     setIsLoading(true);
+    setGeneratedText(inputText);
     setErrorMessage(null);
 
     try {
-      // APIを呼び出す
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,15 +75,13 @@ export default function Home() {
 
       const data = await response.json();
 
-      // Base64エンコードされた音声データをBlobに変換
-      const audioBlob = base64ToBlob(data.audioContent, "audio/mp3");
-
       // 既存のaudioUrlがある場合は解放
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
       }
 
-      // 新しいaudioUrlを作成
+      // Base64エンコードされた音声データをBlobに変換
+      const audioBlob = base64ToBlob(data.audioContent, "audio/mp3");
       const newAudioUrl = URL.createObjectURL(audioBlob);
       setAudioUrl(newAudioUrl);
     } catch (error) {
@@ -135,7 +123,7 @@ export default function Home() {
         URL.revokeObjectURL(audioUrl);
       }
     };
-  }, []);
+  }, [audioUrl]);
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-4xl">
@@ -154,24 +142,17 @@ export default function Home() {
             <button
               onClick={handleGenerateVoice}
               disabled={!inputText.trim() || isLoading}
-              className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full flex items-center justify-center ${
+              className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full ${
                 !inputText.trim() || isLoading
                   ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                   : "bg-blue-500 text-white hover:bg-blue-600"
               }`}
             >
-              {isLoading ? (
-                "生成中..."
-              ) : (
-                <>
-                  <SpeakerWaveIcon className="h-5 w-5 mr-2" />
-                  音声を生成
-                </>
-              )}
+              {isLoading ? "生成中..." : "音声を生成"}
             </button>
           </div>
 
-          <AudioPlayer audioUrl={audioUrl} text={inputText || ""} />
+          <AudioPlayer audioUrl={audioUrl} text={generatedText} />
         </div>
 
         <div className="space-y-6">
