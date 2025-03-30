@@ -7,6 +7,7 @@ import TextInput from "../components/ui/TextInput";
 import VoiceSettings, {
   VoiceSettingsType,
 } from "../components/ui/VoiceSettings";
+import { validateText, validateVoiceSettings } from "../utils/validators";
 
 // クライアントサイドのみでレンダリングするコンポーネント
 const AudioPlayer = dynamic(() => import("../components/ui/AudioPlayer"), {
@@ -30,42 +31,110 @@ export default function Home() {
   });
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleTextChange = (text: string) => {
     setInputText(text);
+    setErrorMessage(null);
   };
 
   const handleSettingsChange = (settings: VoiceSettingsType) => {
     setVoiceSettings(settings);
+    setErrorMessage(null);
   };
 
   const handleGenerateVoice = async () => {
-    if (!inputText.trim()) return;
+    // テキストの検証
+    if (!validateText(inputText)) {
+      setErrorMessage("テキストが入力されていないか、文字数制限を超えています");
+      return;
+    }
+
+    // 音声設定の検証
+    if (
+      !validateVoiceSettings(
+        voiceSettings.language,
+        voiceSettings.voiceName,
+        voiceSettings.speakingRate,
+        voiceSettings.pitch
+      )
+    ) {
+      setErrorMessage("音声設定が無効です");
+      return;
+    }
 
     setIsLoading(true);
+    setErrorMessage(null);
 
-    // ここではまだAPIを実装していないので、モックデータを使用
     try {
-      // 実際のAPIが実装されたら、ここでAPIを呼び出す
-      // const response = await fetch('/api/tts', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ text: inputText, ...voiceSettings }),
-      // });
+      // APIを呼び出す
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: inputText,
+          ...voiceSettings,
+        }),
+      });
 
-      // モック処理（実際のAPIが実装されるまでのダミー）
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "音声の生成に失敗しました");
+      }
 
-      // 仮のオーディオファイルを設定（実際のAPIが実装されるまでのダミー）
-      // 実際はAPIからのレスポンスを使用
-      setAudioUrl("/audio/sample.mp3");
+      const data = await response.json();
+
+      // Base64エンコードされた音声データをBlobに変換
+      const audioBlob = base64ToBlob(data.audioContent, "audio/mp3");
+
+      // 既存のaudioUrlがある場合は解放
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+
+      // 新しいaudioUrlを作成
+      const newAudioUrl = URL.createObjectURL(audioBlob);
+      setAudioUrl(newAudioUrl);
     } catch (error) {
       console.error("音声生成エラー:", error);
-      alert("音声の生成中にエラーが発生しました。");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "音声の生成中にエラーが発生しました"
+      );
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Base64文字列をBlobに変換する関数
+  const base64ToBlob = (base64: string, mimeType: string): Blob => {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+
+    return new Blob(byteArrays, { type: mimeType });
+  };
+
+  // コンポーネントがアンマウントされる際にaudioUrlを解放
+  React.useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, []);
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-4xl">
@@ -78,6 +147,9 @@ export default function Home() {
           <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 mb-6">
             <h2 className="text-lg font-medium mb-4">テキスト入力</h2>
             <TextInput onChange={handleTextChange} maxLength={5000} />
+            {errorMessage && (
+              <div className="mt-2 text-red-500 text-sm">{errorMessage}</div>
+            )}
             <button
               onClick={handleGenerateVoice}
               disabled={!inputText.trim() || isLoading}

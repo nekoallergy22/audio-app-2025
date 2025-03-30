@@ -37,3 +37,8 @@ mkdir -p src/utils
 touch src/utils/googleTTS.ts src/utils/validators.ts
 
 echo "VoiceForgeアプリケーションの追加ディレクトリとファイルが作成されました。"
+
+
+
+# install package
+docker exec -it voiceforge-app-dev npm install dotenv
