@@ -14,6 +14,7 @@ interface AudioPlayerProps {
   text?: string;
   isLoading?: boolean;
   segmentNumber?: number;
+  onDurationChange: (duration: number) => void; // 追加
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -21,6 +22,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   text,
   isLoading = false,
   segmentNumber,
+  onDurationChange, // 追加
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -29,7 +31,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   // 音声メタデータ読み込み処理
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
-      setDuration(audioRef.current.duration);
+      const newDuration = audioRef.current.duration;
+      setDuration(newDuration);
+      onDurationChange(newDuration); // 親コンポーネントに通知
     }
   };
 

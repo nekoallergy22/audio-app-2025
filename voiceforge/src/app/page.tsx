@@ -3,6 +3,8 @@
 
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import DownloadOptions from "../components/ui/DownloadOptions";
+
 import TextInput from "../components/ui/TextInput";
 import VoiceSettings, {
   VoiceSettingsType,
@@ -33,6 +35,14 @@ export default function Home() {
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleDurationChange = (id: string, duration: number) => {
+    setTextSegments((prevSegments) =>
+      prevSegments.map((segment) =>
+        segment.id === id ? { ...segment, duration } : segment
+      )
+    );
+  };
 
   const handleTextChange = (text: string) => {
     setInputText(text);
@@ -231,6 +241,9 @@ export default function Home() {
                 text={segment.text}
                 isLoading={segment.isLoading}
                 segmentNumber={index + 1}
+                onDurationChange={(duration) =>
+                  handleDurationChange(segment.id, duration)
+                }
               />
             ))}
           </div>
@@ -238,6 +251,13 @@ export default function Home() {
 
         <div className="space-y-6">
           <VoiceSettings onChange={handleSettingsChange} />
+
+          {/* 新しいダウンロードオプションコンポーネントを追加 */}
+          <DownloadOptions
+            segments={textSegments}
+            fullText={inputText}
+            voiceSettings={voiceSettings}
+          />
         </div>
       </div>
     </main>
