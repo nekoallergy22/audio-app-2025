@@ -1,0 +1,1 @@
+tree voiceforge -I node_modules > tree.txt

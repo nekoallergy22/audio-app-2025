@@ -1,0 +1,43 @@
+voiceforge
+├── README.md
+├── docker
+│   ├── Dockerfile.dev
+│   ├── Dockerfile.prod
+│   ├── docker-compose.dev.yml
+│   └── docker-compose.prod.yml
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── public
+│   ├── audio
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── vercel.svg
+│   └── window.svg
+├── src
+│   ├── app
+│   │   ├── api
+│   │   │   └── tts
+│   │   │       └── route.ts
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components
+│   │   ├── AudioController.tsx
+│   │   ├── GoogleTTSConverter.tsx
+│   │   └── ui
+│   │       ├── AudioPlayer.tsx
+│   │       ├── DownloadButton.tsx
+│   │       ├── TextInput.tsx
+│   │       └── VoiceSettings.tsx
+│   └── utils
+│       ├── googleTTS.ts
+│       └── validators.ts
+└── tsconfig.json
+
+10 directories, 30 files
