@@ -1,4 +1,6 @@
 // src/components/ui/DownloadButton.tsx
+"use client";
+
 import React, { useState } from "react";
 
 interface DownloadButtonProps {

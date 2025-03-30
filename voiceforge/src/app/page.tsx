@@ -2,12 +2,23 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import TextInput from "../components/ui/TextInput";
 import VoiceSettings, {
   VoiceSettingsType,
 } from "../components/ui/VoiceSettings";
-import AudioPlayer from "../components/ui/AudioPlayer";
-import DownloadButton from "../components/ui/DownloadButton";
+
+// クライアントサイドのみでレンダリングするコンポーネント
+const AudioPlayer = dynamic(() => import("../components/ui/AudioPlayer"), {
+  ssr: false,
+});
+
+const DownloadButton = dynamic(
+  () => import("../components/ui/DownloadButton"),
+  {
+    ssr: false,
+  }
+);
 
 export default function Home() {
   const [inputText, setInputText] = useState("");

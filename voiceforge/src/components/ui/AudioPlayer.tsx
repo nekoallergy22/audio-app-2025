@@ -1,4 +1,6 @@
 // src/components/ui/AudioPlayer.tsx
+"use client";
+
 import React, { useState, useRef, useEffect } from "react";
 
 interface AudioPlayerProps {
