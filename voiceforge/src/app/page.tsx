@@ -8,6 +8,7 @@ import VoiceSettings, {
   VoiceSettingsType,
 } from "../components/ui/VoiceSettings";
 import { validateText, validateVoiceSettings } from "../utils/validators";
+import { SpeakerWaveIcon } from "@heroicons/react/24/solid";
 
 // クライアントサイドのみでレンダリングするコンポーネント
 const AudioPlayer = dynamic(() => import("../components/ui/AudioPlayer"), {
@@ -153,22 +154,28 @@ export default function Home() {
             <button
               onClick={handleGenerateVoice}
               disabled={!inputText.trim() || isLoading}
-              className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full ${
+              className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full flex items-center justify-center ${
                 !inputText.trim() || isLoading
                   ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                   : "bg-blue-500 text-white hover:bg-blue-600"
               }`}
             >
-              {isLoading ? "生成中..." : "音声を生成"}
+              {isLoading ? (
+                "生成中..."
+              ) : (
+                <>
+                  <SpeakerWaveIcon className="h-5 w-5 mr-2" />
+                  音声を生成
+                </>
+              )}
             </button>
           </div>
 
-          <AudioPlayer audioUrl={audioUrl} />
+          <AudioPlayer audioUrl={audioUrl} text={inputText || ""} />
         </div>
 
         <div className="space-y-6">
           <VoiceSettings onChange={handleSettingsChange} />
-          <DownloadButton audioUrl={audioUrl} />
         </div>
       </div>
     </main>

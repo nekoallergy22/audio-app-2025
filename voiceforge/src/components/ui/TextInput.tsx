@@ -10,7 +10,9 @@ const TextInput: React.FC<TextInputProps> = ({
   onChange,
   maxLength = 1000,
 }) => {
-  const [text, setText] = useState<string>("");
+  const [text, setText] = useState<string>(
+    "VoiceForge - テキスト読み上げツール"
+  );
   const [remainingChars, setRemainingChars] = useState<number>(maxLength);
 
   useEffect(() => {
