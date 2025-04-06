@@ -33,6 +33,8 @@ voiceforge
 │   │   └── ui
 │   │       ├── AudioPlayer.tsx
 │   │       ├── DownloadButton.tsx
+│   │       ├── DownloadOptions.tsx
+│   │       ├── PlaybackControls.tsx
 │   │       ├── TextInput.tsx
 │   │       └── VoiceSettings.tsx
 │   └── utils
@@ -40,4 +42,4 @@ voiceforge
 │       └── validators.ts
 └── tsconfig.json
 
-10 directories, 30 files
+10 directories, 32 files
