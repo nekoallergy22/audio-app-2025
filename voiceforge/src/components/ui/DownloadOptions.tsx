@@ -14,7 +14,9 @@ interface TextSegment {
   text: string;
   audioUrl: string | null;
   isLoading: boolean;
-  duration: number; // 追加
+  duration: number;
+  slideNumber?: number;
+  slideOrder?: number;
 }
 
 interface DownloadOptionsProps {
@@ -28,8 +30,66 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
   fullText,
   voiceSettings,
 }) => {
-  const [usePrefix, setUsePrefix] = useState(true);
+  const [usePrefix, setUsePrefix] = useState(false);
   const [prefix, setPrefix] = useState("segment_");
+
+  // 全音声をZIPでダウンロード
+  const handleDownloadAllAudio = async () => {
+    // JSZipをダイナミックインポート
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+
+    // 有効な音声セグメントをフィルタリング
+    const validSegments = segments.filter((segment) => segment.audioUrl);
+
+    if (validSegments.length === 0) {
+      alert("ダウンロード可能な音声がありません");
+      return;
+    }
+
+    try {
+      // 各セグメントを処理
+      for (let i = 0; i < validSegments.length; i++) {
+        const segment = validSegments[i];
+        if (!segment.audioUrl) continue;
+
+        // 音声データを取得
+        const response = await fetch(segment.audioUrl);
+        const blob = await response.blob();
+
+        // ファイル名を作成
+        const segmentNumber = (i + 1).toString().padStart(4, "0");
+        const cleanText = segment.text.replace(/^\n+/, "");
+        const fileName = usePrefix
+          ? `${prefix}${segmentNumber}_${cleanText
+              .substring(0, 20)
+              .replace(/[\\/:*?"<>|]/g, "_")}.mp3`
+          : `${segmentNumber}_${cleanText
+              .substring(0, 30)
+              .replace(/[\\/:*?"<>|]/g, "_")}.mp3`;
+
+        // ZIPに追加
+        zip.file(fileName, blob);
+      }
+
+      // ZIPを生成してダウンロード
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "voiceforge_audio.zip";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // URLを解放
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      console.error("ZIP作成エラー:", error);
+      alert("音声ファイルのダウンロード中にエラーが発生しました");
+    }
+  };
 
   // テキストをダウンロード
   const handleDownloadText = () => {
@@ -58,14 +118,49 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
       return;
     }
 
+    // スライドごとのデータを集計
+    const slideMap = new Map();
+
+    // 有効なスライド番号を持つセグメントを処理
+    segments.forEach((segment, index) => {
+      const slideNumber = segment.slideNumber;
+      if (slideNumber !== undefined && slideNumber > 0) {
+        // スライド情報がまだ存在しない場合は初期化
+        if (!slideMap.has(slideNumber)) {
+          slideMap.set(slideNumber, {
+            id: slideNumber,
+            name: slideNumber.toString(),
+            num_audio: 0,
+            audio_list: [],
+            duration: 0,
+            margin: 1000,
+          });
+        }
+
+        // スライド情報を更新
+        const slideInfo = slideMap.get(slideNumber);
+        slideInfo.num_audio += 1;
+        slideInfo.audio_list.push(index + 1); // 1-based index
+        slideInfo.duration += Math.round(segment.duration * 1000); // ミリ秒に変換
+      }
+    });
+
+    // スライド情報を配列に変換し、ID順にソート
+    const slideArray = Array.from(slideMap.values()).sort(
+      (a, b) => a.id - b.id
+    );
+
     // JSONデータを作成
     const jsonData = {
       voiceSettings,
-      segments: segments.map((segment) => ({
-        id: segment.id,
-        text: segment.text.replace(/^\n+/, ""), // 先頭の改行を削除
-        duration: segment.duration,
+      segments: segments.map((segment, index) => ({
+        id: index + 1, // 1-based index
+        text: segment.text.replace(/^\n+/, ""),
+        duration: Math.round(segment.duration * 1000), // ミリ秒に変換
+        slideNumber: segment.slideNumber || null,
+        slideOrder: segment.slideOrder || null,
       })),
+      slide: slideArray,
       createdAt: new Date().toISOString(),
     };
 
@@ -82,56 +177,6 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
     document.body.removeChild(link);
 
     setTimeout(() => URL.revokeObjectURL(url), 100);
-  };
-
-  // 全音声をZIPでダウンロード
-  const handleDownloadAllAudio = async () => {
-    const JSZip = (await import("jszip")).default;
-    const zip = new JSZip();
-
-    const validSegments = segments.filter((segment) => segment.audioUrl);
-
-    if (validSegments.length === 0) {
-      alert("ダウンロード可能な音声がありません");
-      return;
-    }
-
-    try {
-      for (let i = 0; i < validSegments.length; i++) {
-        const segment = validSegments[i];
-        if (!segment.audioUrl) continue;
-
-        const response = await fetch(segment.audioUrl);
-        const blob = await response.blob();
-
-        const segmentNumber = (i + 1).toString().padStart(4, "0");
-        const cleanText = segment.text.replace(/^\n+/, ""); // 先頭の改行を削除
-        const fileName = usePrefix
-          ? `${prefix}${segmentNumber}_${cleanText
-              .substring(0, 20)
-              .replace(/[\\/:*?"<>|]/g, "_")}.mp3`
-          : `${segmentNumber}_${cleanText
-              .substring(0, 30)
-              .replace(/[\\/:*?"<>|]/g, "_")}.mp3`;
-
-        zip.file(fileName, blob);
-      }
-
-      const content = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(content);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "voiceforge_audio.zip";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => URL.revokeObjectURL(url), 100);
-    } catch (error) {
-      console.error("ZIP作成エラー:", error);
-      alert("音声ファイルのダウンロード中にエラーが発生しました");
-    }
   };
 
   return (

@@ -3,14 +3,14 @@
 
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import DownloadOptions from "../components/ui/DownloadOptions";
-
 import TextInput from "../components/ui/TextInput";
 import VoiceSettings, {
   VoiceSettingsType,
 } from "../components/ui/VoiceSettings";
+import DownloadOptions from "../components/ui/DownloadOptions";
 import { validateText, validateVoiceSettings } from "../utils/validators";
-import { SpeakerWaveIcon } from "@heroicons/react/24/solid";
+import { SpeakerWaveIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
+import SettingsPopup from "../components/ui/SettingsPopup";
 
 const AudioPlayer = dynamic(() => import("../components/ui/AudioPlayer"), {
   ssr: false,
@@ -22,6 +22,9 @@ interface TextSegment {
   text: string;
   audioUrl: string | null;
   isLoading: boolean;
+  duration: number;
+  slideNumber?: number;
+  slideOrder?: number;
 }
 
 export default function Home() {
@@ -35,6 +38,7 @@ export default function Home() {
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleDurationChange = (id: string, duration: number) => {
     setTextSegments((prevSegments) =>
@@ -52,6 +56,51 @@ export default function Home() {
   const handleSettingsChange = (settings: VoiceSettingsType) => {
     setVoiceSettings(settings);
     setErrorMessage(null);
+  };
+
+  const handleTabToNext = (currentIndex: number) => {
+    const nextInput = document.getElementById(
+      `slide-number-${currentIndex + 2}`
+    );
+    if (nextInput) {
+      nextInput.focus();
+    }
+  };
+
+  // スライド情報変更ハンドラを修正（半自動化機能を追加）
+  const handleSlideInfoChange = (id: string, slideNumber: number) => {
+    // 現在のセグメントのインデックスを取得
+    const currentIndex = textSegments.findIndex((segment) => segment.id === id);
+    if (currentIndex === -1) return;
+
+    // セグメントを更新（半自動化：現在のセグメント以降に同じスライド番号を設定）
+    setTextSegments((prevSegments) => {
+      // まず現在のセグメントとそれ以降を更新
+      const updatedSegments = prevSegments.map((segment, index) => {
+        // 現在のセグメントまたはそれ以降のセグメントの場合
+        if (index >= currentIndex) {
+          // 現在のセグメントか、それ以降のセグメントに新しいスライド番号を設定
+          return { ...segment, slideNumber };
+        }
+        return segment;
+      });
+
+      // スライド内順番を再計算
+      const newSlideOrderMap = new Map<number, number>();
+
+      // 各スライド番号ごとに順番を1から振り直す
+      return updatedSegments.map((segment) => {
+        if (!segment.slideNumber || segment.slideNumber <= 0) {
+          return { ...segment, slideOrder: undefined };
+        }
+
+        const slideNum = segment.slideNumber;
+        const order = newSlideOrderMap.get(slideNum) || 0;
+        newSlideOrderMap.set(slideNum, order + 1);
+
+        return { ...segment, slideOrder: order + 1 };
+      });
+    });
   };
 
   // テキストを句点で分割する関数
@@ -149,6 +198,7 @@ export default function Home() {
         text,
         audioUrl: null,
         isLoading: true,
+        duration: 0,
       }));
 
       setTextSegments(newSegments);
@@ -199,67 +249,86 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="container mx-auto px-4 py-8 max-w-4xl">
+    <main className="container mx-auto px-4 py-8 max-w-5xl">
       <h1 className="text-2xl font-bold mb-6 text-center">
         VoiceForge - テキスト読み上げツール
       </h1>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2">
-          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 mb-6">
-            <h2 className="text-lg font-medium mb-4">テキスト入力</h2>
-            <TextInput onChange={handleTextChange} maxLength={5000} />
-            {errorMessage && (
-              <div className="mt-2 text-red-500 text-sm">{errorMessage}</div>
-            )}
-            <button
-              onClick={handleGenerateAllVoices}
-              disabled={!inputText.trim() || isGenerating}
-              className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full flex items-center justify-center ${
-                !inputText.trim() || isGenerating
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-500 text-white hover:bg-blue-600"
-              }`}
-            >
-              {isGenerating ? (
-                "生成中..."
-              ) : (
-                <>
-                  <SpeakerWaveIcon className="h-5 w-5 mr-2" />
-                  音声を生成
-                </>
-              )}
-            </button>
-          </div>
+      {/* テキスト入力セクションのみ表示 */}
+      <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 mb-8 relative">
+        {/* 設定アイコン */}
+        <div className="absolute top-4 right-4">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            title="設定"
+          >
+            <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
+          </button>
+        </div>
 
-          {/* セグメントごとのAudioPlayerを表示 */}
+        <h2 className="text-lg font-medium mb-4">テキスト入力</h2>
+        <TextInput onChange={handleTextChange} maxLength={5000} />
+        {errorMessage && (
+          <div className="mt-2 text-red-500 text-sm">{errorMessage}</div>
+        )}
+        <button
+          onClick={handleGenerateAllVoices}
+          disabled={!inputText.trim() || isGenerating}
+          className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full flex items-center justify-center ${
+            !inputText.trim() || isGenerating
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-blue-500 text-white hover:bg-blue-600"
+          }`}
+        >
+          {isGenerating ? (
+            "生成中..."
+          ) : (
+            <>
+              <SpeakerWaveIcon className="h-5 w-5 mr-2" />
+              音声を生成
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* 設定ポップアップ */}
+      <SettingsPopup
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        segments={textSegments}
+        fullText={inputText}
+        voiceSettings={voiceSettings}
+        onSettingsChange={handleSettingsChange}
+      />
+
+      {/* 下部セクション：生成された音声一覧 */}
+      {textSegments.length > 0 && (
+        <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+          <h2 className="text-lg font-medium mb-4">生成された音声</h2>
           <div className="space-y-4">
             {textSegments.map((segment, index) => (
               <AudioPlayer
                 key={segment.id}
+                id={segment.id}
                 audioUrl={segment.audioUrl}
-                text={segment.text}
+                text={segment.text.replace(/^\n+/, "")}
                 isLoading={segment.isLoading}
                 segmentNumber={index + 1}
                 onDurationChange={(duration) =>
                   handleDurationChange(segment.id, duration)
                 }
+                onSlideInfoChange={(id, slideNumber) =>
+                  handleSlideInfoChange(id, slideNumber)
+                }
+                slideNumber={segment.slideNumber}
+                slideOrder={segment.slideOrder}
+                onTabToNext={() => handleTabToNext(index)}
               />
             ))}
           </div>
         </div>
-
-        <div className="space-y-6">
-          <VoiceSettings onChange={handleSettingsChange} />
-
-          {/* 新しいダウンロードオプションコンポーネントを追加 */}
-          <DownloadOptions
-            segments={textSegments}
-            fullText={inputText}
-            voiceSettings={voiceSettings}
-          />
-        </div>
-      </div>
+      )}
     </main>
   );
 }
