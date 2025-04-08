@@ -28,14 +28,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [needsRegeneration, setNeedsRegeneration] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // テキストのクリーンアップ（先頭の改行を削除）
-  const cleanText = (text || "").replace(/^\n+/, "");
+  // テキスト比較用（改行と前後スペースを除去）
+  const cleanOriginalText = (text || "").trim().replace(/^\n+/g, "");
+  const cleanEditedText = editedText.trim().replace(/^\n+/g, "");
 
-  // テキスト編集時に再生成フラグを立てる
+  // テキスト変更検知
   useEffect(() => {
-    if (editedText !== text && editedText.trim() !== "") {
-      setNeedsRegeneration(true);
-    }
+    setNeedsRegeneration(cleanEditedText !== cleanOriginalText);
   }, [editedText, text]);
 
   // 音声メタデータ処理
@@ -53,38 +52,29 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     return () => audio.removeEventListener("loadedmetadata", handleMetadata);
   }, [audioRef, onDurationChange]);
 
-  // 音声URL変更時の処理
-  useEffect(() => {
-    if (audioUrl && audioRef.current) {
-      audioRef.current.load();
-      // 再生成後は自動的に再生を開始
-      if (needsRegeneration === false) {
-        audioRef.current.play();
-        setIsPlaying(true);
-      } else {
-        setIsPlaying(false);
-      }
-      setDuration(0);
-    }
-  }, [audioUrl, needsRegeneration]);
-
-  // 再生/一時停止の切り替え（再生成機能を統合）
+  // 再生/一時停止処理
   const togglePlayPause = async () => {
-    // テキストが編集されていて再生成が必要な場合
+    if (!audioRef.current) return;
+
     if (needsRegeneration && onRegenerateAudio) {
       try {
         await onRegenerateAudio(id, editedText);
         setNeedsRegeneration(false);
-        // 再生成後に自動再生するため、ここでは setIsPlaying(true) は不要
-        // audioUrlが変わると、useEffectで自動的に再生される
+
+        // 再チェック（非同期処理後）
+        if (!audioRef.current) return;
+
+        audioRef.current.load();
+
+        audioRef.current.oncanplay = () => {
+          audioRef.current?.play();
+          setIsPlaying(true);
+        };
       } catch (error) {
         console.error("再生成エラー:", error);
       }
       return;
     }
-
-    // 通常の再生/一時停止処理
-    if (!audioRef.current) return;
 
     if (isPlaying) {
       audioRef.current.pause();
@@ -102,14 +92,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setIsPlaying(false);
   };
 
-  // 音声終了時の処理
+  // 音声終了処理
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const handleEnded = () => setIsPlaying(false);
     audio.addEventListener("ended", handleEnded);
-
     return () => audio.removeEventListener("ended", handleEnded);
   }, []);
 
@@ -117,7 +106,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const handleDownload = () => {
     if (!audioUrl) return;
 
-    const sanitizedFileName = cleanText
+    const sanitizedFileName = editedText
       .replace(/[\\/:*?"<>|]/g, "_")
       .substring(0, 50)
       .trim();
@@ -151,7 +140,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             </div>
 
             <textarea
-              value={editedText.replace(/^\n+/, "")} // テキストボックスに格納する際も改行を削除
+              value={editedText.replace(/^\n+/g, "")}
               onChange={handleTextChange}
               className="text-gray-700 flex-grow mr-3 min-h-[3rem] resize-y border rounded-md p-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={2}
@@ -184,7 +173,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             {formatSegmentNumber(segmentNumber)}
           </div>
           <textarea
-            value={editedText.replace(/^\n+/, "")} // テキストボックスに格納する際も改行を削除
+            value={editedText.replace(/^\n+/g, "")}
             onChange={handleTextChange}
             className="text-gray-700 flex-grow mr-3 min-h-[3rem] resize-y border rounded-md p-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={2}
