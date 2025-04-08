@@ -30,16 +30,26 @@ voiceforge
 │   ├── components
 │   │   ├── AudioController.tsx
 │   │   ├── GoogleTTSConverter.tsx
+│   │   ├── SegmentList.tsx
+│   │   ├── VoiceGenerator.tsx
 │   │   └── ui
 │   │       ├── AudioPlayer.tsx
 │   │       ├── DownloadButton.tsx
 │   │       ├── DownloadOptions.tsx
 │   │       ├── PlaybackControls.tsx
+│   │       ├── SettingsPopup.tsx
 │   │       ├── TextInput.tsx
-│   │       └── VoiceSettings.tsx
+│   │       ├── VoiceSettings.tsx
+│   │       └── audio-player
+│   │           ├── LoadingIndicator.tsx
+│   │           ├── index.tsx
+│   │           ├── types.tsx
+│   │           └── utils.ts
+│   ├── types
+│   │   └── index.ts
 │   └── utils
 │       ├── googleTTS.ts
 │       └── validators.ts
 └── tsconfig.json
 
-10 directories, 32 files
+12 directories, 40 files
