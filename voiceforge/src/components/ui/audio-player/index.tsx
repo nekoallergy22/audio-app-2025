@@ -56,6 +56,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const togglePlayPause = async () => {
     if (!audioRef.current) return;
 
+    // テキスト変更がある場合の再生成処理
     if (needsRegeneration && onRegenerateAudio) {
       try {
         await onRegenerateAudio(id, editedText);
@@ -64,22 +65,30 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         // 再チェック（非同期処理後）
         if (!audioRef.current) return;
 
-        audioRef.current.load();
+        // 音声ソースの更新
+        audioRef.current.src = "";
+        audioRef.current.src = audioUrl || "";
 
-        audioRef.current.oncanplay = () => {
-          audioRef.current?.play();
-          setIsPlaying(true);
-        };
+        // メタデータの再読み込み待機
+        await new Promise<void>((resolve) => {
+          if (!audioRef.current) return;
+          audioRef.current.onloadedmetadata = () => resolve();
+        });
+
+        // 再生開始
+        await audioRef.current.play();
+        setIsPlaying(true);
       } catch (error) {
         console.error("再生成エラー:", error);
       }
       return;
     }
 
+    // 通常の再生/一時停止処理
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      await audioRef.current.play();
     }
     setIsPlaying(!isPlaying);
   };
