@@ -1,153 +1,247 @@
-# TTS アプリケーション設計書（Google TTS 使用）
+# VoiceForge 設計書（Google TTS 使用）
 
-## 要件定義書
+## 要件定義
 
 ### 概要
 
-テキスト入力を Google Cloud Text-to-Speech API を使用して音声に変換し、ブラウザ上で再生および MP3 形式でダウンロードできる Web アプリケーションを開発します。
+Google Cloud Text-to-Speech API を活用したテキスト音声変換ツール。句点単位での音声分割生成、スライド情報連携、編集可能なセグメント管理を特徴とする。
 
 ### 主要機能
 
-1. テキスト入力機能
+1. **テキスト入力**
 
-   - ユーザーがテキストを入力できるテキストエリアを提供
-   - 文字数制限と残り文字数の表示
+   - 最大 5,000 文字のマルチライン入力
+   - 行番号表示とリアルタイム文字数カウント
+   - 句点（。）による自動セグメント分割
 
-2. 音声変換機能
+2. **音声変換**
 
-   - 入力されたテキストを Google Cloud Text-to-Speech API を使用して音声に変換
-   - 言語、声質（WaveNet など）、速度などの設定オプション
+   - 言語選択（日本語/英語）
+   - 音声タイプ選択（WaveNet/標準）
+   - 話速（0.25-4.0）とピッチ（-20-20）調整
+   - 個別セグメント再生成機能
 
-3. 音声再生機能
+3. **音声制御**
 
-   - ブラウザ上で変換された音声をその場で再生
-   - 再生/一時停止/停止などの基本的な制御
+   - セグメント単位の再生/一時停止/停止
+   - スライド番号と順序情報の連携
+   - 音声長さ表示（mm:ss 形式）
 
-4. 音声ダウンロード機能
-   - 変換された音声を MP3 形式でダウンロード
-   - ファイル名のカスタマイズオプション
+4. **データ管理**
+
+   - MP3/ZIP 形式での音声ダウンロード
+   - 編集済みテキストの TXT エクスポート
+   - スライド情報含む JSON エクスポート
+   - セグメント編集履歴追跡
+
+5. **スライド連携**
+   - スライド番号の半自動割り当て
+   - 同一スライド内の順序自動管理
+   - タブ移動による効率的な入力
 
 ### 非機能要件
 
-1. パフォーマンス
+1. **パフォーマンス**
 
-   - API 呼び出しのレスポンス時間を最小限に抑える
-   - 大量のテキスト入力にも対応（Google TTS の制限内）
+   - セグメント並列生成処理
+   - Base64⇨Blob 変換のクライアント側処理
+   - 音声 URL のメモリ管理（revokeObjectURL）
 
-2. ユーザビリティ
+2. **拡張性**
 
-   - シンプルで直感的な UI
-   - モバイルデバイスを含む様々な画面サイズに対応
+   - 型安全な TypeScript 実装
+   - モジュール分割されたコンポーネント構造
+   - Docker 環境による開発/本番ビルド分離
 
-3. アクセシビリティ
-   - スクリーンリーダー対応
-   - キーボードナビゲーション対応
+3. **セキュリティ**
+   - API キーの環境変数管理
+   - 入力値の厳格なバリデーション
+   - エラーハンドリングの一元化
 
-## 設計書
+## システム設計
 
-### アプリケーション概略設計
+### アーキテクチャ
 
-このアプリケーションは Next.js の App Router を使用して構築します。テキスト入力から Google TTS による音声変換、再生、ダウンロードまでの一連の流れをシンプルな UI で提供します。
+データフロー図
 
-### 機能設計
+```
 
-#### テキスト入力機能
+[テキスト入力] → [句点分割] → [セグメント生成] → [並列 API 処理]
+↓ ↓ ↓ ↓
+[設定管理] → [バリデーション] → [音声変換] → [Blob 生成]
+↓ ↓
+[UI 状態管理] ← [スライド情報連携] ← [メタデータ抽出]
 
-- テキストエリアコンポーネント
-- 文字数カウンター
-- 入力バリデーション
-
-#### 音声変換機能
-
-- Google Cloud Text-to-Speech API を使用したテキスト音声変換
-- 言語選択機能（日本語、英語など）
-- 音声パラメータ調整（WaveNet 音声、標準音声、速度、ピッチなど）
-
-#### 音声再生機能
-
-- オーディオプレーヤーコンポーネント
-- 再生コントロール（再生/一時停止/停止）
-
-#### 音声ダウンロード機能
-
-- Google TTS から返される MP3 形式の音声ファイルのダウンロード
-- ダウンロードボタン
-- ファイル名入力フィールド
+```
 
 ### コンポーネント構成
 
-#### ページコンポーネント
-
-- `app/page.tsx`: メインページ
-
-#### UI コンポーネント
-
-- `components/ui/TextInput.tsx`: テキスト入力エリア
-- `components/ui/VoiceSettings.tsx`: 音声設定パネル（Google TTS 用）
-- `components/ui/AudioPlayer.tsx`: 音声再生プレーヤー
-- `components/ui/DownloadButton.tsx`: ダウンロードボタン
-
-#### 機能コンポーネント
-
-- `components/GoogleTTSConverter.tsx`: Google TTS によるテキスト音声変換処理
-- `components/AudioController.tsx`: 音声制御ロジック
-
-#### ユーティリティ
-
-- `utils/googleTTS.ts`: Google Cloud Text-to-Speech API 操作
-- `utils/validators.ts`: 入力検証
-
-### Google TTS 実装詳細
-
-#### API 認証
-
-- Google Cloud プロジェクトの作成
-- Cloud Text-to-Speech API の有効化
-- サービスアカウントキー（JSON）の作成と管理[1]
-- API キーの安全な管理（環境変数など）[3]
-
-#### API 呼び出し
-
-```typescript
-// Google TTS APIリクエスト例
-const request = {
-  input: { text: inputText },
-  voice: { languageCode: "ja-JP", name: "ja-JP-Wavenet-A" },
-  audioConfig: { audioEncoding: "MP3" },
-};
-
-const [response] = await client.synthesizeSpeech(request);
 ```
 
-#### 料金考慮
-
-- 標準音声は月間 400 万文字、WaveNet 音声は月間 100 万文字まで無料[5]
-- 使用量の監視と制限機能の実装
-
-## データフロー図
+src/
+├── app/
+│ └── api/tts/route.ts # TTS API エンドポイント
+├── components/
+│ ├── ui/
+│ │ ├── AudioPlayer/ # 音声プレーヤー
+│ │ │ ├── LoadingIndicator.tsx
+│ │ │ ├── PlaybackControls.tsx
+│ │ │ └── SlideInfoInputs.tsx
+│ │ ├── SettingsPopup.tsx # 統合設定画面
+│ │ └── TextInput.tsx # 行番号付きテキストエリア
+│ └── VoiceGenerator.tsx # 音声生成ロジック
+├── types/ # 型定義
+└── utils/
+├── googleTTS.ts # TTS API クライアント
+└── validators.ts # 入力検証
 
 ```
-[テキスト入力] → [バリデーション] → [音声設定適用] → [Google TTS API呼び出し]
-                                                    ↓
-[ダウンロード] ← [音声ファイル処理] ← [API応答処理] ← [音声データ]
-                                    ↓
-                              [音声再生]
+
+### 主要コンポーネント仕様
+
+#### 1. AudioPlayer コンポーネント
+
 ```
 
-## 技術スタック詳細
+interface AudioPlayerProps {
+   audioUrl: string | null
+   editedText: string
+   onTextEdit: (id: string, text: string) => void
+   onRegenerateAudio: (id: string, text: string) => Promise
+   slideNumber?: number
+   slideOrder?: number
+   onSlideInfoChange: (id: string, slideNumber: number) => void
+}
 
-- **フロントエンド**: Next.js 15.2.3 (App Router), TypeScript, Tailwind CSS, Heroicons
-- **音声処理**: Google Cloud Text-to-Speech API
-- **開発環境**: Docker, Docker Compose, Node.js, npm
-- **テスト**: Jest, React Testing Library
+```
 
-## 実装計画
+- 編集可能なテキストエリアを内蔵
+- スライド情報入力と自動順序管理
+- 変更検知時の自動再生成機能
 
-1. プロジェクト初期設定
-2. Google Cloud 設定（プロジェクト作成、API 有効化、認証情報取得）
-3. UI コンポーネント実装
-4. Google TTS API 連携実装
-5. 音声再生機能実装
-6. 音声ダウンロード機能実装
-7. テスト実装
-8. デプロイ
+#### 2. TTS API エンドポイント
+
+```
+
+// POST /api/tts
+{
+   text: string
+   language: string
+   voiceName: string
+   speakingRate: number
+   pitch: number
+}
+
+// レスポンス
+{
+   audioContent: string // Base64
+   format: "mp3"
+}
+
+```
+
+- 環境変数経由の API キー管理
+- 厳格な入力バリデーション
+- エラーハンドリングの統一化
+
+#### 3. セグメント管理状態
+
+```
+
+interface TextSegment {
+   id: string
+   originalText: string
+   editedText: string
+   audioUrl: string | null
+   isLoading: boolean
+   duration: number
+   slideNumber?: number
+   slideOrder?: number
+}
+
+```
+
+- オリジナル/編集済みテキストの分離管理
+- ローディング状態の追跡
+- スライド情報のオプショナル保持
+
+## 技術スタック
+
+### 基盤技術
+
+| カテゴリ       | 技術選定                   |
+| -------------- | -------------------------- |
+| フロントエンド | Next.js 15, TypeScript 5.3 |
+| スタイリング   | Tailwind CSS 3.4           |
+| 状態管理       | React Context + useState   |
+| アイコン       | Heroicons 2.1.1            |
+
+### 補助技術
+
+| 目的           | 技術選定      |
+| -------------- | ------------- |
+| 音声処理       | Web Audio API |
+| ZIP 圧縮       | JSZip 3.10    |
+| フォーマット   | date-fns 3.0  |
+| バリデーション | Zod 3.22      |
+
+## 品質保証
+
+### テスト戦略
+
+1. **ユニットテスト**
+
+   - バリデーションロジック
+   - 時間フォーマットユーティリティ
+   - セグメント分割アルゴリズム
+
+2. **統合テスト**
+
+   - エンドツーエンドの音声生成フロー
+   - スライド情報連携機能
+   - ファイルエクスポート機能
+
+3. **パフォーマンステスト**
+   - 大規模テキスト入力時の処理速度
+   - 並列 API 呼び出しの負荷テスト
+   - メモリリーク検出
+
+### 監視項目
+
+- Google TTS API の使用量とコスト
+- ユーザー操作ログ（Analytics 連携）
+- エラー発生率とタイプ
+- セグメント生成成功率
+
+## 今後の拡張案
+
+### 短期ロードマップ
+
+1. プレゼンテーションモード（スライド連動再生）
+2. 複数音声のミックスダウン機能
+3. バッチ処理による大量生成
+
+### 長期ビジョン
+
+1. AI による自動テキスト最適化
+2. マルチプラットフォーム対応（Electron 統合）
+3. プロジェクト管理機能の追加
+
+```
+
+現行実装との主な相違点：
+
+1. スライド情報連携機能の追加（半自動番号割当）
+2. セグメント編集と差分管理機能の実装
+3. 複数ファイルエクスポートオプションの拡張
+4. 状態管理の最適化（メモリ効率向上）
+5. エラーハンドリングの強化
+
+設計書の更新ポイント：
+
+- 実際のコンポーネント構造を反映
+- スライド管理機能の詳細を追加
+- セグメントベースの処理フローを明示
+- 型定義と API 仕様を現行コードに合わせ更新
+- テスト戦略にパフォーマンス項目を追加
+```
