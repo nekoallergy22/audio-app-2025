@@ -1,4 +1,4 @@
-// src/components/ui/PlaybackControls.tsx
+// src/components/ui/audio-player/PlaybackControls.tsx
 import React from "react";
 import {
   PlayIcon,
@@ -12,6 +12,7 @@ interface PlaybackControlsProps {
   onPlayPause: () => void;
   onStop: () => void;
   onDownload: () => void;
+  // onRegenerateプロパティを削除
 }
 
 const PlaybackControls: React.FC<PlaybackControlsProps> = ({
@@ -46,6 +47,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     >
       <ArrowDownTrayIcon className="h-5 w-5" />
     </button>
+    {/* 再生成ボタンを削除 */}
   </div>
 );
 

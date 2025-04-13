@@ -12,14 +12,14 @@ import { validateText, validateVoiceSettings } from "../utils/validators";
 import { SpeakerWaveIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 import SettingsPopup from "../components/ui/SettingsPopup";
 
-const AudioPlayer = dynamic(() => import("../components/ui/AudioPlayer"), {
-  ssr: false,
-});
+import AudioPlayer from "@/components/ui/audio-player";
 
 // テキストセグメントと対応する音声URLを管理するインターフェース
 interface TextSegment {
   id: string;
   text: string;
+  originalText?: string;
+  editedText: string;
   audioUrl: string | null;
   isLoading: boolean;
   duration: number;
@@ -196,6 +196,7 @@ export default function Home() {
       const newSegments: TextSegment[] = segments.map((text, index) => ({
         id: `segment-${Date.now()}-${index}`,
         text,
+        editedText: text, // 初期値は元のテキスト
         audioUrl: null,
         isLoading: true,
         duration: 0,
@@ -216,7 +217,6 @@ export default function Home() {
           );
         } catch (error) {
           console.error(`セグメント ${i + 1} の音声生成エラー:`, error);
-
           // エラーが発生したセグメントを更新
           setTextSegments((prev) =>
             prev.map((segment, idx) =>
@@ -247,6 +247,50 @@ export default function Home() {
       });
     };
   }, []);
+
+  const handleTextEdit = (id: string, newText: string) => {
+    setTextSegments((prevSegments) =>
+      prevSegments.map((segment) =>
+        segment.id === id ? { ...segment, editedText: newText } : segment
+      )
+    );
+  };
+
+  // 音声を再生成する関数
+  const handleRegenerateAudio = async (id: string, newText: string) => {
+    try {
+      // 該当セグメントをローディング状態に
+      setTextSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === id ? { ...segment, isLoading: true } : segment
+        )
+      );
+
+      // 新しいテキストで音声を生成
+      const audioUrl = await generateVoice(newText);
+
+      // 結果を更新
+      setTextSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === id
+            ? { ...segment, audioUrl, isLoading: false, text: newText }
+            : segment
+        )
+      );
+    } catch (error) {
+      console.error("音声再生成エラー:", error);
+      setTextSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === id ? { ...segment, isLoading: false } : segment
+        )
+      );
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "音声の再生成中にエラーが発生しました"
+      );
+    }
+  };
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-5xl">
@@ -324,6 +368,9 @@ export default function Home() {
                 slideNumber={segment.slideNumber}
                 slideOrder={segment.slideOrder}
                 onTabToNext={() => handleTabToNext(index)}
+                editedText={segment.editedText}
+                onTextEdit={handleTextEdit}
+                onRegenerateAudio={handleRegenerateAudio}
               />
             ))}
           </div>

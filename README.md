@@ -1,5 +1,7 @@
 # VoiceForge - テキスト読み上げツール
 
+![UI](src/sample_ui.png)
+
 Google Cloud Text-to-Speech API を使用して、テキストを高品質な音声に変換する Web アプリケーションです。
 
 ## 機能

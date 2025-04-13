@@ -1,7 +1,8 @@
 // src/types/index.ts
 export interface TextSegment {
   id: string;
-  text: string;
+  originalText: string; // 元のテキスト
+  editedText: string; // 編集可能なテキスト
   audioUrl: string | null;
   isLoading: boolean;
   duration: number;
