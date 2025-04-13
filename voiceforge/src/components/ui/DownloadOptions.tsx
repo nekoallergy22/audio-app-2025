@@ -8,6 +8,7 @@ import {
   CodeBracketIcon,
 } from "@heroicons/react/24/solid";
 import { Switch } from "@headlessui/react";
+import JSZip from "jszip"; // JSZipをインポート
 
 interface TextSegment {
   id: string;
@@ -33,13 +34,23 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
   const [usePrefix, setUsePrefix] = useState(false);
   const [prefix, setPrefix] = useState("segment_");
 
+  // プロジェクトIDと名前の状態管理を追加
+  const [projId, setProjId] = useState("test");
+  const [projName, setProjName] = useState("test");
+
+  // プロジェクトID入力ハンドラ
+  const handleProjIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setProjId(e.target.value);
+  };
+
+  // プロジェクト名入力ハンドラ
+  const handleProjNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setProjName(e.target.value);
+  };
+
   // 全音声をZIPでダウンロード
   const handleDownloadAllAudio = async () => {
-    // JSZipをダイナミックインポート
-    const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
-
-    // 有効な音声セグメントをフィルタリング
     const validSegments = segments.filter((segment) => segment.audioUrl);
 
     if (validSegments.length === 0) {
@@ -48,31 +59,20 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
     }
 
     try {
-      // 各セグメントを処理
       for (let i = 0; i < validSegments.length; i++) {
         const segment = validSegments[i];
-        if (!segment.audioUrl) continue;
-
-        // 音声データを取得
-        const response = await fetch(segment.audioUrl);
+        const response = await fetch(segment.audioUrl!);
         const blob = await response.blob();
 
-        // ファイル名を作成
         const segmentNumber = (i + 1).toString().padStart(4, "0");
         const cleanText = segment.text.replace(/^\n+/, "");
         const fileName = usePrefix
-          ? `${prefix}${segmentNumber}_${cleanText
-              .substring(0, 20)
-              .replace(/[\\/:*?"<>|]/g, "_")}.mp3`
-          : `${segmentNumber}_${cleanText
-              .substring(0, 30)
-              .replace(/[\\/:*?"<>|]/g, "_")}.mp3`;
+          ? `${prefix}${segmentNumber}_${cleanText.substring(0, 20)}.mp3`
+          : `${segmentNumber}_${cleanText.substring(0, 30)}.mp3`;
 
-        // ZIPに追加
         zip.file(fileName, blob);
       }
 
-      // ZIPを生成してダウンロード
       const content = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(content);
 
@@ -82,8 +82,6 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
-      // URLを解放
       setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (error) {
       console.error("ZIP作成エラー:", error);
@@ -150,18 +148,32 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
       (a, b) => a.id - b.id
     );
 
-    // JSONデータを作成
+    // スライド数と音声セグメント数を計算
+    const numSlide = slideArray.length;
+    const numAudio = segments.length;
+
+    // 現在の日付を取得（YYYY-MM-DD形式）
+    const currentDate = new Date().toISOString().split("T")[0];
+
+    // JSONデータを作成（projectセクションを追加）
     const jsonData = {
+      project: {
+        proj_id: projId, // 状態変数を使用
+        name: projName, // 状態変数を使用
+        num_slide: numSlide,
+        num_audio: numAudio,
+        create_at: currentDate,
+        update_at: currentDate,
+      },
       voiceSettings,
-      segments: segments.map((segment, index) => ({
-        id: index + 1, // 1-based index
+      audios: segments.map((segment, index) => ({
+        id: index + 1, // インデックスベースのID（1始まり）
         text: segment.text.replace(/^\n+/, ""),
         duration: Math.round(segment.duration * 1000), // ミリ秒に変換
         slideNumber: segment.slideNumber || null,
         slideOrder: segment.slideOrder || null,
       })),
       slide: slideArray,
-      createdAt: new Date().toISOString(),
     };
 
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
@@ -184,7 +196,35 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
       <h3 className="text-lg font-medium mb-4">ダウンロードオプション</h3>
 
       <div className="space-y-4">
-        {/* プレフィックス設定 */}
+        {/* プロジェクト情報入力フィールド */}
+        <div className="space-y-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              プロジェクトID
+            </label>
+            <input
+              type="text"
+              value={projId}
+              onChange={handleProjIdChange}
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="プロジェクトIDを入力"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              プロジェクト名
+            </label>
+            <input
+              type="text"
+              value={projName}
+              onChange={handleProjNameChange}
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="プロジェクト名を入力"
+            />
+          </div>
+        </div>
+
+        {/* ファイル名プレフィックス設定 */}
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium text-gray-700">
             ファイル名プレフィックス
@@ -215,12 +255,12 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
               placeholder="プレフィックス"
             />
             <p className="text-xs text-gray-500 mt-1">
-              例: {prefix}0001_こんにちは.mp3
+              プレフィックス例：{prefix}0001_こんにちは.mp3
             </p>
           </div>
         )}
 
-        {/* ダウンロードボタン */}
+        {/* ダウンロードボタン群 */}
         <div className="grid grid-cols-1 gap-2">
           <button
             onClick={handleDownloadAllAudio}
