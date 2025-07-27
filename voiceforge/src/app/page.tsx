@@ -9,7 +9,7 @@ import VoiceSettings, {
 } from "../components/ui/VoiceSettings";
 import DownloadOptions from "../components/ui/DownloadOptions";
 import { validateText, validateVoiceSettings } from "../utils/validators";
-import { SpeakerWaveIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
+import { SpeakerWaveIcon, Cog6ToothIcon, DocumentTextIcon } from "@heroicons/react/24/solid";
 import SettingsPopup from "../components/ui/SettingsPopup";
 
 import AudioPlayer from "@/components/ui/audio-player";
@@ -32,12 +32,13 @@ export default function Home() {
   const [textSegments, setTextSegments] = useState<TextSegment[]>([]);
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettingsType>({
     language: "ja-JP",
-    voiceName: "ja-JP-Wavenet-A",
+    voiceName: "ja-JP-Wavenet-D",
     speakingRate: 1.0,
     pitch: 0,
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleDurationChange = (id: string, duration: number) => {
@@ -159,22 +160,10 @@ export default function Home() {
     return URL.createObjectURL(audioBlob);
   };
 
-  // すべてのセグメントの音声を生成
-  const handleGenerateAllVoices = async () => {
+  // テキストセグメントを生成
+  const handleGenerateTextSegments = () => {
     if (!validateText(inputText)) {
       setErrorMessage("テキストが入力されていないか、文字数制限を超えています");
-      return;
-    }
-
-    if (
-      !validateVoiceSettings(
-        voiceSettings.language,
-        voiceSettings.voiceName,
-        voiceSettings.speakingRate,
-        voiceSettings.pitch
-      )
-    ) {
-      setErrorMessage("音声設定が無効です");
       return;
     }
 
@@ -192,22 +181,63 @@ export default function Home() {
         }
       });
 
-      // 新しいセグメントの配列を作成
+      // 新しいセグメントの配列を作成（音声なし）
       const newSegments: TextSegment[] = segments.map((text, index) => ({
         id: `segment-${Date.now()}-${index}`,
         text,
         editedText: text, // 初期値は元のテキスト
         audioUrl: null,
-        isLoading: true,
+        isLoading: false,
         duration: 0,
       }));
 
       setTextSegments(newSegments);
+    } catch (error) {
+      console.error("テキスト分割エラー:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "テキストの分割中にエラーが発生しました"
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
+  // すべてのセグメントの音声を生成
+  const handleGenerateAllVoices = async () => {
+    if (textSegments.length === 0) {
+      setErrorMessage("先にテキストを生成してください");
+      return;
+    }
+
+    if (
+      !validateVoiceSettings(
+        voiceSettings.language,
+        voiceSettings.voiceName,
+        voiceSettings.speakingRate,
+        voiceSettings.pitch
+      )
+    ) {
+      setErrorMessage("音声設定が無効です");
+      return;
+    }
+
+    setIsGeneratingAudio(true);
+    setErrorMessage(null);
+
+    try {
       // 各セグメントごとに音声を生成
-      for (let i = 0; i < newSegments.length; i++) {
+      for (let i = 0; i < textSegments.length; i++) {
         try {
-          const audioUrl = await generateVoice(newSegments[i].text);
+          // セグメントをローディング状態に
+          setTextSegments((prev) =>
+            prev.map((segment, idx) =>
+              idx === i ? { ...segment, isLoading: true } : segment
+            )
+          );
+
+          const audioUrl = await generateVoice(textSegments[i].editedText);
 
           // 特定のセグメントのaudioUrlを更新
           setTextSegments((prev) =>
@@ -233,7 +263,7 @@ export default function Home() {
           : "音声の生成中にエラーが発生しました"
       );
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -316,24 +346,53 @@ export default function Home() {
         {errorMessage && (
           <div className="mt-2 text-red-500 text-sm">{errorMessage}</div>
         )}
-        <button
-          onClick={handleGenerateAllVoices}
-          disabled={!inputText.trim() || isGenerating}
-          className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full flex items-center justify-center ${
-            !inputText.trim() || isGenerating
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-blue-500 text-white hover:bg-blue-600"
-          }`}
-        >
-          {isGenerating ? (
-            "生成中..."
-          ) : (
-            <>
-              <SpeakerWaveIcon className="h-5 w-5 mr-2" />
-              音声を生成
-            </>
-          )}
-        </button>
+        
+        {/* ボタンを左右に配置 */}
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div className="flex flex-col">
+            <div className="text-xs text-gray-500 mb-1 text-center">Step 1</div>
+            <button
+              onClick={handleGenerateTextSegments}
+              disabled={!inputText.trim() || isGenerating}
+              className={`py-2 px-4 rounded-md focus:outline-none flex items-center justify-center ${
+                !inputText.trim() || isGenerating
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-green-500 text-white hover:bg-green-600"
+              }`}
+            >
+              {isGenerating ? (
+                "分割中..."
+              ) : (
+                <>
+                  <DocumentTextIcon className="h-5 w-5 mr-2" />
+                  テキストを生成
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="flex flex-col">
+            <div className="text-xs text-gray-500 mb-1 text-center">Step 2</div>
+            <button
+              onClick={handleGenerateAllVoices}
+              disabled={textSegments.length === 0 || isGeneratingAudio}
+              className={`py-2 px-4 rounded-md focus:outline-none flex items-center justify-center ${
+                textSegments.length === 0 || isGeneratingAudio
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-500 text-white hover:bg-blue-600"
+              }`}
+            >
+              {isGeneratingAudio ? (
+                "生成中..."
+              ) : (
+                <>
+                  <SpeakerWaveIcon className="h-5 w-5 mr-2" />
+                  音声を生成
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 設定ポップアップ */}
@@ -349,7 +408,9 @@ export default function Home() {
       {/* 下部セクション：生成された音声一覧 */}
       {textSegments.length > 0 && (
         <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-          <h2 className="text-lg font-medium mb-4">生成された音声</h2>
+          <h2 className="text-lg font-medium mb-4">
+            {textSegments.some(segment => segment.audioUrl) ? "生成された音声" : "生成されたテキストセグメント"}
+          </h2>
           <div className="space-y-4">
             {textSegments.map((segment, index) => (
               <AudioPlayer

@@ -15,7 +15,7 @@ interface VoiceSettingsProps {
 const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onChange }) => {
   const [settings, setSettings] = useState<VoiceSettingsType>({
     language: "ja-JP",
-    voiceName: "ja-JP-Wavenet-A",
+    voiceName: "ja-JP-Wavenet-D",
     speakingRate: 1.0,
     pitch: 0,
   });

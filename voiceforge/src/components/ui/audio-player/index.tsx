@@ -187,8 +187,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             className="text-gray-700 flex-grow mr-3 min-h-[3rem] resize-y border rounded-md p-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={2}
           />
-          <div className="text-sm text-red-500 ml-auto">
-            音声の生成に失敗しました
+          <div className="text-sm text-gray-500 ml-auto flex items-center">
+            <ClockIcon className="h-4 w-4 mr-1" />
+            0:00
+          </div>
+          <div className="text-sm text-blue-500 ml-4 whitespace-nowrap">
+            「音声を生成」を押してください
           </div>
         </div>
       )}

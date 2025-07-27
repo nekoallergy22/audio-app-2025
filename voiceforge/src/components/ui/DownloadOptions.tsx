@@ -116,6 +116,21 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
       return;
     }
 
+    // slideNumberやslideOrderが空の場合の警告チェック
+    const segmentsWithoutSlideInfo = segments.filter(
+      (segment) => !segment.slideNumber || segment.slideNumber <= 0
+    );
+    
+    if (segmentsWithoutSlideInfo.length > 0) {
+      const confirmed = confirm(
+        `${segmentsWithoutSlideInfo.length}個のセグメントにスライド番号が設定されていません。\n` +
+        "このままダウンロードしますか？"
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     // スライドごとのデータを集計
     const slideMap = new Map();
 
