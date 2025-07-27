@@ -9,7 +9,7 @@ import VoiceSettings, {
 } from "../components/ui/VoiceSettings";
 import DownloadOptions from "../components/ui/DownloadOptions";
 import { validateText, validateVoiceSettings } from "../utils/validators";
-import { SpeakerWaveIcon, Cog6ToothIcon, DocumentTextIcon } from "@heroicons/react/24/solid";
+import { SpeakerWaveIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 import SettingsPopup from "../components/ui/SettingsPopup";
 
 import AudioPlayer from "@/components/ui/audio-player";
@@ -37,9 +37,9 @@ export default function Home() {
     pitch: 0,
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUpdatingFromSegments, setIsUpdatingFromSegments] = useState(false);
 
   const handleDurationChange = (id: string, duration: number) => {
     setTextSegments((prevSegments) =>
@@ -50,8 +50,10 @@ export default function Home() {
   };
 
   const handleTextChange = (text: string) => {
-    setInputText(text);
-    setErrorMessage(null);
+    if (!isUpdatingFromSegments) {
+      setInputText(text);
+      setErrorMessage(null);
+    }
   };
 
   const handleSettingsChange = (settings: VoiceSettingsType) => {
@@ -160,54 +162,11 @@ export default function Home() {
     return URL.createObjectURL(audioBlob);
   };
 
-  // テキストセグメントを生成
-  const handleGenerateTextSegments = () => {
-    if (!validateText(inputText)) {
-      setErrorMessage("テキストが入力されていないか、文字数制限を超えています");
-      return;
-    }
-
-    setIsGenerating(true);
-    setErrorMessage(null);
-
-    try {
-      // テキストを句点で分割
-      const segments = splitTextByPeriod(inputText);
-
-      // 既存のaudioUrlを解放
-      textSegments.forEach((segment) => {
-        if (segment.audioUrl) {
-          URL.revokeObjectURL(segment.audioUrl);
-        }
-      });
-
-      // 新しいセグメントの配列を作成（音声なし）
-      const newSegments: TextSegment[] = segments.map((text, index) => ({
-        id: `segment-${Date.now()}-${index}`,
-        text,
-        editedText: text, // 初期値は元のテキスト
-        audioUrl: null,
-        isLoading: false,
-        duration: 0,
-      }));
-
-      setTextSegments(newSegments);
-    } catch (error) {
-      console.error("テキスト分割エラー:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "テキストの分割中にエラーが発生しました"
-      );
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   // すべてのセグメントの音声を生成
   const handleGenerateAllVoices = async () => {
     if (textSegments.length === 0) {
-      setErrorMessage("先にテキストを生成してください");
+      setErrorMessage("テキストを入力してください");
       return;
     }
 
@@ -267,6 +226,66 @@ export default function Home() {
     }
   };
 
+  // リアルタイムでテキスト分割を実行
+  useEffect(() => {
+    if (!inputText.trim() || isUpdatingFromSegments) {
+      if (!inputText.trim()) {
+        setTextSegments((prevSegments) => {
+          // 既存のaudioUrlを解放
+          prevSegments.forEach((segment) => {
+            if (segment.audioUrl) {
+              URL.revokeObjectURL(segment.audioUrl);
+            }
+          });
+          return [];
+        });
+      }
+      return;
+    }
+
+    // テキストを句点で分割
+    const segments = splitTextByPeriod(inputText);
+
+    setTextSegments((prevSegments) => {
+      // 既存のセグメントと比較
+      const currentTexts = prevSegments.map(s => s.editedText);
+      const newTexts = segments;
+      
+      if (JSON.stringify(currentTexts) !== JSON.stringify(newTexts)) {
+        // 既存のセグメントを保持しつつ、新しいセグメント配列を作成
+        const updatedSegments: TextSegment[] = segments.map((text, index) => {
+          // 同じインデックスの既存セグメントを探す
+          const existingSegment = prevSegments[index];
+          
+          // テキストが同じなら既存セグメントを保持（音声も保持）
+          if (existingSegment && existingSegment.editedText === text) {
+            return existingSegment;
+          }
+          
+          // テキストが異なるか新規セグメントの場合は新しく作成
+          return {
+            id: existingSegment?.id || `segment-${Date.now()}-${index}`,
+            text,
+            editedText: text,
+            audioUrl: null,
+            isLoading: false,
+            duration: 0,
+          };
+        });
+
+        // 削除されたセグメントの音声URLを解放
+        prevSegments.slice(segments.length).forEach((segment) => {
+          if (segment.audioUrl) {
+            URL.revokeObjectURL(segment.audioUrl);
+          }
+        });
+
+        return updatedSegments;
+      }
+      return prevSegments;
+    });
+  }, [inputText, isUpdatingFromSegments]);
+
   // コンポーネントがアンマウントされる際にaudioUrlを解放
   useEffect(() => {
     return () => {
@@ -279,11 +298,42 @@ export default function Home() {
   }, []);
 
   const handleTextEdit = (id: string, newText: string) => {
-    setTextSegments((prevSegments) =>
-      prevSegments.map((segment) =>
-        segment.id === id ? { ...segment, editedText: newText } : segment
-      )
-    );
+    setTextSegments((prevSegments) => {
+      // セグメントを更新（編集されたセグメントの音声をリセット）
+      const updatedSegments = prevSegments.map((segment) => {
+        if (segment.id === id) {
+          // 編集されたセグメントの音声をリセット
+          if (segment.audioUrl) {
+            URL.revokeObjectURL(segment.audioUrl);
+          }
+          return { 
+            ...segment, 
+            editedText: newText,
+            audioUrl: null,
+            duration: 0,
+            isLoading: false
+          };
+        }
+        return segment;
+      });
+      
+      // 全セグメントのテキストを結合して入力欄を更新
+      const combinedText = updatedSegments
+        .map((segment) => {
+          const text = segment.editedText.trim();
+          return text.endsWith("。") ? text : text + "。";
+        })
+        .join("");
+      
+      // セグメントからの更新であることを示すフラグを設定
+      setIsUpdatingFromSegments(true);
+      setInputText(combinedText);
+      
+      // フラグをリセット（非同期で）
+      setTimeout(() => setIsUpdatingFromSegments(false), 0);
+      
+      return updatedSegments;
+    });
   };
 
   // 音声を再生成する関数
@@ -322,6 +372,54 @@ export default function Home() {
     }
   };
 
+  // 個別セグメントの音声を生成する関数
+  const handleGenerateAudio = async (id: string, text: string) => {
+    if (
+      !validateVoiceSettings(
+        voiceSettings.language,
+        voiceSettings.voiceName,
+        voiceSettings.speakingRate,
+        voiceSettings.pitch
+      )
+    ) {
+      setErrorMessage("音声設定が無効です");
+      return;
+    }
+
+    try {
+      // 該当セグメントをローディング状態に
+      setTextSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === id ? { ...segment, isLoading: true } : segment
+        )
+      );
+
+      // 音声を生成
+      const audioUrl = await generateVoice(text);
+
+      // 結果を更新（textも更新して同期を保つ）
+      setTextSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === id
+            ? { ...segment, audioUrl, isLoading: false, text }
+            : segment
+        )
+      );
+    } catch (error) {
+      console.error(`セグメント音声生成エラー:`, error);
+      setTextSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === id ? { ...segment, isLoading: false } : segment
+        )
+      );
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "音声の生成中にエラーが発生しました"
+      );
+    }
+  };
+
   return (
     <main className="container mx-auto px-4 py-8 max-w-5xl">
       <h1 className="text-2xl font-bold mb-6 text-center">
@@ -342,57 +440,30 @@ export default function Home() {
         </div>
 
         <h2 className="text-lg font-medium mb-4">テキスト入力</h2>
-        <TextInput onChange={handleTextChange} maxLength={5000} />
+        <TextInput value={inputText} onChange={handleTextChange} maxLength={5000} />
         {errorMessage && (
           <div className="mt-2 text-red-500 text-sm">{errorMessage}</div>
         )}
         
-        {/* ボタンを左右に配置 */}
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div className="flex flex-col">
-            <div className="text-xs text-gray-500 mb-1 text-center">Step 1</div>
-            <button
-              onClick={handleGenerateTextSegments}
-              disabled={!inputText.trim() || isGenerating}
-              className={`py-2 px-4 rounded-md focus:outline-none flex items-center justify-center ${
-                !inputText.trim() || isGenerating
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-green-500 text-white hover:bg-green-600"
-              }`}
-            >
-              {isGenerating ? (
-                "分割中..."
-              ) : (
-                <>
-                  <DocumentTextIcon className="h-5 w-5 mr-2" />
-                  テキストを生成
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="flex flex-col">
-            <div className="text-xs text-gray-500 mb-1 text-center">Step 2</div>
-            <button
-              onClick={handleGenerateAllVoices}
-              disabled={textSegments.length === 0 || isGeneratingAudio}
-              className={`py-2 px-4 rounded-md focus:outline-none flex items-center justify-center ${
-                textSegments.length === 0 || isGeneratingAudio
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-500 text-white hover:bg-blue-600"
-              }`}
-            >
-              {isGeneratingAudio ? (
-                "生成中..."
-              ) : (
-                <>
-                  <SpeakerWaveIcon className="h-5 w-5 mr-2" />
-                  音声を生成
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+        {/* 音声生成ボタン */}
+        <button
+          onClick={handleGenerateAllVoices}
+          disabled={textSegments.length === 0 || isGeneratingAudio}
+          className={`mt-4 py-2 px-4 rounded-md focus:outline-none w-full flex items-center justify-center ${
+            textSegments.length === 0 || isGeneratingAudio
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-blue-500 text-white hover:bg-blue-600"
+          }`}
+        >
+          {isGeneratingAudio ? (
+            "音声生成中..."
+          ) : (
+            <>
+              <SpeakerWaveIcon className="h-5 w-5 mr-2" />
+              音声を生成
+            </>
+          )}
+        </button>
       </div>
 
       {/* 設定ポップアップ */}
@@ -408,9 +479,7 @@ export default function Home() {
       {/* 下部セクション：生成された音声一覧 */}
       {textSegments.length > 0 && (
         <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-          <h2 className="text-lg font-medium mb-4">
-            {textSegments.some(segment => segment.audioUrl) ? "生成された音声" : "生成されたテキストセグメント"}
-          </h2>
+          <h2 className="text-lg font-medium mb-4">テキスト一覧</h2>
           <div className="space-y-4">
             {textSegments.map((segment, index) => (
               <AudioPlayer
@@ -432,6 +501,7 @@ export default function Home() {
                 editedText={segment.editedText}
                 onTextEdit={handleTextEdit}
                 onRegenerateAudio={handleRegenerateAudio}
+                onGenerateAudio={handleGenerateAudio}
               />
             ))}
           </div>

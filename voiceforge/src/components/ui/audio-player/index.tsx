@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ClockIcon } from "@heroicons/react/24/solid";
+import { ClockIcon, SpeakerWaveIcon } from "@heroicons/react/24/solid";
 import PlaybackControls from "./PlaybackControls";
 import LoadingIndicator from "./LoadingIndicator";
 import SlideInfoInputs from "./SlideInfoInputs";
@@ -22,6 +22,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   editedText,
   onTextEdit,
   onRegenerateAudio,
+  onGenerateAudio,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -34,8 +35,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   // テキスト変更検知
   useEffect(() => {
-    setNeedsRegeneration(cleanEditedText !== cleanOriginalText);
-  }, [editedText, text]);
+    // 音声がある場合のみテキスト変更をチェック
+    if (audioUrl) {
+      setNeedsRegeneration(cleanEditedText !== cleanOriginalText);
+    } else {
+      setNeedsRegeneration(false);
+    }
+  }, [editedText, text, audioUrl]);
 
   // 音声メタデータ処理
   useEffect(() => {
@@ -133,6 +139,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     onTextEdit(id, e.target.value);
   };
 
+  // 個別音声生成ハンドラ
+  const handleGenerateAudio = async () => {
+    if (onGenerateAudio) {
+      await onGenerateAudio(id, editedText);
+    }
+  };
+
   if (isLoading) return <LoadingIndicator />;
 
   return (
@@ -191,9 +204,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             <ClockIcon className="h-4 w-4 mr-1" />
             0:00
           </div>
-          <div className="text-sm text-blue-500 ml-4 whitespace-nowrap">
-            「音声を生成」を押してください
-          </div>
+          <button
+            onClick={handleGenerateAudio}
+            className="ml-4 px-3 py-1 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center whitespace-nowrap"
+          >
+            <SpeakerWaveIcon className="h-4 w-4 mr-1" />
+            音声を生成
+          </button>
         </div>
       )}
     </div>

@@ -2,19 +2,20 @@
 import React, { useState, useEffect, useMemo } from "react";
 
 interface TextInputProps {
+  value: string;
   onChange: (text: string) => void;
   maxLength?: number;
 }
 
 const TextInput: React.FC<TextInputProps> = ({
+  value,
   onChange,
   maxLength = 1000,
 }) => {
-  const [text, setText] = useState<string>("");
   const [remainingChars, setRemainingChars] = useState<number>(maxLength);
 
   // 行数をカウント
-  const lineCount = useMemo(() => text.split("\n").length, [text]);
+  const lineCount = useMemo(() => value.split("\n").length, [value]);
 
   // 行番号の配列を作成
   const linesArr = useMemo(
@@ -23,13 +24,12 @@ const TextInput: React.FC<TextInputProps> = ({
   );
 
   useEffect(() => {
-    setRemainingChars(maxLength - text.length);
-  }, [text, maxLength]);
+    setRemainingChars(maxLength - value.length);
+  }, [value, maxLength]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
     if (newText.length <= maxLength) {
-      setText(newText);
       onChange(newText);
     }
   };
@@ -61,7 +61,7 @@ const TextInput: React.FC<TextInputProps> = ({
         {/* テキスト入力エリア */}
         <textarea
           className="w-full p-3 border-none rounded-md focus:outline-none min-h-[150px] leading-6"
-          value={text}
+          value={value}
           onChange={handleChange}
           onScroll={handleTextareaScroll}
           placeholder="テキストを入力してください..."
