@@ -16,6 +16,6 @@ export interface AudioPlayerProps {
   onTabToNext?: () => void;
   editedText: string;
   onTextEdit: (id: string, text: string) => void;
-  onRegenerateAudio?: (id: string, text: string) => Promise<void>;
-  onGenerateAudio?: (id: string, text: string) => Promise<void>;
+  onRegenerateAudio?: (id: string, text: string) => Promise<string | null>;
+  onGenerateAudio?: (id: string, text: string) => Promise<string | null>;
 }

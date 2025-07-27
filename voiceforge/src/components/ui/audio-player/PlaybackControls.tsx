@@ -9,14 +9,15 @@ import {
 
 interface PlaybackControlsProps {
   isPlaying: boolean;
+  isGenerating: boolean;
   onPlayPause: () => void;
   onStop: () => void;
   onDownload: () => void;
-  // onRegenerateプロパティを削除
 }
 
 const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   isPlaying,
+  isGenerating,
   onPlayPause,
   onStop,
   onDownload,
@@ -24,10 +25,17 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   <div className="flex space-x-2 shrink-0">
     <button
       onClick={onPlayPause}
-      className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-      title={isPlaying ? "一時停止" : "再生"}
+      disabled={isGenerating}
+      className={`p-2 rounded-full transition-colors ${
+        isGenerating
+          ? "bg-gray-400 text-white cursor-not-allowed"
+          : "bg-blue-500 text-white hover:bg-blue-600"
+      }`}
+      title={isGenerating ? "音声生成中..." : isPlaying ? "一時停止" : "再生"}
     >
-      {isPlaying ? (
+      {isGenerating ? (
+        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      ) : isPlaying ? (
         <PauseIcon className="h-5 w-5" />
       ) : (
         <PlayIcon className="h-5 w-5" />
@@ -35,7 +43,12 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     </button>
     <button
       onClick={onStop}
-      className="p-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors"
+      disabled={isGenerating}
+      className={`p-2 rounded-full transition-colors ${
+        isGenerating
+          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+      }`}
       title="停止"
     >
       <StopIcon className="h-5 w-5" />
@@ -47,7 +60,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     >
       <ArrowDownTrayIcon className="h-5 w-5" />
     </button>
-    {/* 再生成ボタンを削除 */}
   </div>
 );
 

@@ -170,6 +170,15 @@ export default function Home() {
       return;
     }
 
+    // 確認ダイアログを表示
+    const confirmed = confirm(
+      `${textSegments.length}個のテキストセグメントの音声を一括生成します。\n` +
+      "既に生成済みの音声も再生成されます。よろしいですか？"
+    );
+    if (!confirmed) {
+      return;
+    }
+
     if (
       !validateVoiceSettings(
         voiceSettings.language,
@@ -337,7 +346,7 @@ export default function Home() {
   };
 
   // 音声を再生成する関数
-  const handleRegenerateAudio = async (id: string, newText: string) => {
+  const handleRegenerateAudio = async (id: string, newText: string): Promise<string | null> => {
     try {
       // 該当セグメントをローディング状態に
       setTextSegments((prev) =>
@@ -357,6 +366,8 @@ export default function Home() {
             : segment
         )
       );
+
+      return audioUrl;
     } catch (error) {
       console.error("音声再生成エラー:", error);
       setTextSegments((prev) =>
@@ -369,11 +380,12 @@ export default function Home() {
           ? error.message
           : "音声の再生成中にエラーが発生しました"
       );
+      return null;
     }
   };
 
   // 個別セグメントの音声を生成する関数
-  const handleGenerateAudio = async (id: string, text: string) => {
+  const handleGenerateAudio = async (id: string, text: string): Promise<string | null> => {
     if (
       !validateVoiceSettings(
         voiceSettings.language,
@@ -383,7 +395,7 @@ export default function Home() {
       )
     ) {
       setErrorMessage("音声設定が無効です");
-      return;
+      return null;
     }
 
     try {
@@ -405,6 +417,8 @@ export default function Home() {
             : segment
         )
       );
+
+      return audioUrl;
     } catch (error) {
       console.error(`セグメント音声生成エラー:`, error);
       setTextSegments((prev) =>
@@ -417,6 +431,7 @@ export default function Home() {
           ? error.message
           : "音声の生成中にエラーが発生しました"
       );
+      return null;
     }
   };
 
@@ -460,7 +475,7 @@ export default function Home() {
           ) : (
             <>
               <SpeakerWaveIcon className="h-5 w-5 mr-2" />
-              音声を生成
+              全ての音声を一括生成
             </>
           )}
         </button>
