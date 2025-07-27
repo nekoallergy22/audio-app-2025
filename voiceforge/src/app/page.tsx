@@ -170,10 +170,19 @@ export default function Home() {
       return;
     }
 
+    // 未生成の音声セグメントをフィルタリング
+    const segmentsToGenerate = textSegments.filter(segment => !segment.audioUrl);
+    
+    if (segmentsToGenerate.length === 0) {
+      alert("全ての音声が既に生成済みです。");
+      return;
+    }
+
     // 確認ダイアログを表示
     const confirmed = confirm(
-      `${textSegments.length}個のテキストセグメントの音声を一括生成します。\n` +
-      "既に生成済みの音声も再生成されます。よろしいですか？"
+      `${segmentsToGenerate.length}個の未生成音声セグメントを一括生成します。\n` +
+      `(生成済み: ${textSegments.length - segmentsToGenerate.length}個、未生成: ${segmentsToGenerate.length}個)\n` +
+      "よろしいですか？"
     );
     if (!confirmed) {
       return;
@@ -195,30 +204,32 @@ export default function Home() {
     setErrorMessage(null);
 
     try {
-      // 各セグメントごとに音声を生成
-      for (let i = 0; i < textSegments.length; i++) {
+      // 未生成セグメントのみを処理
+      for (let i = 0; i < segmentsToGenerate.length; i++) {
         try {
+          const targetSegment = segmentsToGenerate[i];
+          
           // セグメントをローディング状態に
           setTextSegments((prev) =>
-            prev.map((segment, idx) =>
-              idx === i ? { ...segment, isLoading: true } : segment
+            prev.map((segment) =>
+              segment.id === targetSegment.id ? { ...segment, isLoading: true } : segment
             )
           );
 
-          const audioUrl = await generateVoice(textSegments[i].editedText);
+          const audioUrl = await generateVoice(targetSegment.editedText);
 
           // 特定のセグメントのaudioUrlを更新
           setTextSegments((prev) =>
-            prev.map((segment, idx) =>
-              idx === i ? { ...segment, audioUrl, isLoading: false } : segment
+            prev.map((segment) =>
+              segment.id === targetSegment.id ? { ...segment, audioUrl, isLoading: false } : segment
             )
           );
         } catch (error) {
           console.error(`セグメント ${i + 1} の音声生成エラー:`, error);
           // エラーが発生したセグメントを更新
           setTextSegments((prev) =>
-            prev.map((segment, idx) =>
-              idx === i ? { ...segment, isLoading: false } : segment
+            prev.map((segment) =>
+              segment.id === segmentsToGenerate[i].id ? { ...segment, isLoading: false } : segment
             )
           );
         }

@@ -10,6 +10,7 @@ import {
 interface PlaybackControlsProps {
   isPlaying: boolean;
   isGenerating: boolean;
+  hasAudio: boolean;
   onPlayPause: () => void;
   onStop: () => void;
   onDownload: () => void;
@@ -18,6 +19,7 @@ interface PlaybackControlsProps {
 const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   isPlaying,
   isGenerating,
+  hasAudio,
   onPlayPause,
   onStop,
   onDownload,
@@ -29,9 +31,17 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       className={`p-2 rounded-full transition-colors ${
         isGenerating
           ? "bg-gray-400 text-white cursor-not-allowed"
-          : "bg-blue-500 text-white hover:bg-blue-600"
+          : hasAudio 
+            ? "bg-blue-500 text-white hover:bg-blue-600"
+            : "bg-orange-500 text-white hover:bg-orange-600"
       }`}
-      title={isGenerating ? "音声生成中..." : isPlaying ? "一時停止" : "再生"}
+      title={
+        isGenerating 
+          ? "音声生成中..." 
+          : hasAudio 
+            ? (isPlaying ? "一時停止" : "再生") 
+            : "音声を生成して再生"
+      }
     >
       {isGenerating ? (
         <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

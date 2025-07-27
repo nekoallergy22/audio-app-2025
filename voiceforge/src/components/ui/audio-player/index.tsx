@@ -204,6 +204,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         <PlaybackControls
           isPlaying={isPlaying}
           isGenerating={isLoading}
+          hasAudio={!!audioUrl}
           onPlayPause={togglePlayPause}
           onStop={stop}
           onDownload={handleDownload}
