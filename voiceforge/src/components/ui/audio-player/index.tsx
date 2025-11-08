@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ClockIcon } from "@heroicons/react/24/solid";
+import { Clock } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import PlaybackControls from "./PlaybackControls";
 import LoadingIndicator from "./LoadingIndicator";
 import SlideInfoInputs from "./SlideInfoInputs";
@@ -27,6 +28,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [needsRegeneration, setNeedsRegeneration] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
 
   // テキスト比較用（改行と前後スペースを除去）
   const cleanOriginalText = (text || "").trim().replace(/^\n+/g, "");
@@ -52,12 +54,62 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     return () => audio.removeEventListener("loadedmetadata", handleMetadata);
   }, [audioRef, onDurationChange]);
 
+  // 音声再生の問題をデバッグするためのイベントリスナー
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleStalled = () => {
+      console.warn("音声読み込みが停止しました (stalled)");
+    };
+
+    const handleSuspend = () => {
+      console.warn("音声読み込みが一時停止しました (suspend)");
+    };
+
+    const handleWaiting = () => {
+      console.warn("音声バッファリング中 (waiting)");
+    };
+
+    const handleError = (e: Event) => {
+      console.error("音声エラー:", audio.error);
+    };
+
+    const handleCanPlay = () => {
+      console.log("音声再生可能 (canplay)");
+    };
+
+    audio.addEventListener("stalled", handleStalled);
+    audio.addEventListener("suspend", handleSuspend);
+    audio.addEventListener("waiting", handleWaiting);
+    audio.addEventListener("error", handleError);
+    audio.addEventListener("canplay", handleCanPlay);
+
+    return () => {
+      audio.removeEventListener("stalled", handleStalled);
+      audio.removeEventListener("suspend", handleSuspend);
+      audio.removeEventListener("waiting", handleWaiting);
+      audio.removeEventListener("error", handleError);
+      audio.removeEventListener("canplay", handleCanPlay);
+    };
+  }, [audioRef]);
+
   // 再生/一時停止処理
   const togglePlayPause = async () => {
     if (!audioRef.current) return;
 
     // テキスト変更がある場合の再生成処理
     if (needsRegeneration && onRegenerateAudio) {
+      // 進行中のplay()があれば待つ
+      if (playPromiseRef.current) {
+        try {
+          await playPromiseRef.current;
+        } catch (e) {
+          // play()が中断された場合は無視
+        }
+        playPromiseRef.current = null;
+      }
+
       try {
         await onRegenerateAudio(id, editedText);
         setNeedsRegeneration(false);
@@ -76,26 +128,59 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         });
 
         // 再生開始
-        await audioRef.current.play();
+        playPromiseRef.current = audioRef.current.play();
+        await playPromiseRef.current;
+        playPromiseRef.current = null;
         setIsPlaying(true);
       } catch (error) {
         console.error("再生成エラー:", error);
+        playPromiseRef.current = null;
+        setIsPlaying(false);
       }
       return;
     }
 
     // 通常の再生/一時停止処理
     if (isPlaying) {
+      // 進行中のplay()があれば待ってからpause()
+      if (playPromiseRef.current) {
+        try {
+          await playPromiseRef.current;
+        } catch (e) {
+          // play()が失敗した場合は無視
+        }
+        playPromiseRef.current = null;
+      }
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      await audioRef.current.play();
+      try {
+        playPromiseRef.current = audioRef.current.play();
+        await playPromiseRef.current;
+        playPromiseRef.current = null;
+        setIsPlaying(true);
+      } catch (error) {
+        console.error("再生エラー:", error);
+        playPromiseRef.current = null;
+        setIsPlaying(false);
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   // 停止処理
-  const stop = () => {
+  const stop = async () => {
     if (!audioRef.current) return;
+
+    // 進行中のplay()があれば待ってからstop()
+    if (playPromiseRef.current) {
+      try {
+        await playPromiseRef.current;
+      } catch (e) {
+        // play()が失敗した場合は無視
+      }
+      playPromiseRef.current = null;
+    }
+
     audioRef.current.pause();
     audioRef.current.currentTime = 0;
     setIsPlaying(false);
@@ -106,7 +191,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleEnded = () => setIsPlaying(false);
+    const handleEnded = () => {
+      playPromiseRef.current = null;
+      setIsPlaying(false);
+    };
     audio.addEventListener("ended", handleEnded);
     return () => audio.removeEventListener("ended", handleEnded);
   }, []);
@@ -139,7 +227,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     <div className="bg-white p-3 rounded-md shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
       {audioUrl ? (
         <>
-          <audio ref={audioRef} key={audioUrl}>
+          <audio ref={audioRef} key={audioUrl} preload="auto">
             <source src={audioUrl} type="audio/mpeg" />
           </audio>
 
@@ -148,15 +236,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
               {formatSegmentNumber(segmentNumber)}
             </div>
 
-            <textarea
+            <Textarea
               value={editedText.replace(/^\n+/g, "")}
               onChange={handleTextChange}
-              className="text-gray-700 flex-grow mr-3 min-h-[3rem] resize-y border rounded-md p-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-grow mr-3 min-h-[3rem] resize-y text-sm"
               rows={2}
             />
 
-            <div className="text-sm text-gray-500 whitespace-nowrap mr-4 flex items-center">
-              <ClockIcon className="h-4 w-4 mr-1" />
+            <div className="text-sm text-muted-foreground whitespace-nowrap mr-4 flex items-center">
+              <Clock className="h-4 w-4 mr-1" />
               {formatTime(duration)}
             </div>
 
@@ -181,10 +269,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           <div className="font-mono text-gray-500 font-medium mr-3 min-w-[40px]">
             {formatSegmentNumber(segmentNumber)}
           </div>
-          <textarea
+          <Textarea
             value={editedText.replace(/^\n+/g, "")}
             onChange={handleTextChange}
-            className="text-gray-700 flex-grow mr-3 min-h-[3rem] resize-y border rounded-md p-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-grow mr-3 min-h-[3rem] resize-y text-sm"
             rows={2}
           />
           <div className="text-sm text-red-500 ml-auto">

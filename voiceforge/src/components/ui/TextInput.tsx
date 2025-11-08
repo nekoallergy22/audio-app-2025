@@ -1,5 +1,6 @@
 // src/components/ui/TextInput.tsx
 import React, { useState, useEffect, useMemo } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TextInputProps {
   onChange: (text: string) => void;
@@ -44,11 +45,11 @@ const TextInput: React.FC<TextInputProps> = ({
 
   return (
     <div className="w-full">
-      <div className="flex border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500">
+      <div className="flex border rounded-md overflow-hidden">
         {/* 行番号表示エリア */}
         <div
           id="line-numbers"
-          className="bg-gray-100 text-gray-500 text-right py-3 px-2 select-none overflow-hidden"
+          className="bg-muted text-muted-foreground text-right py-3 px-2 select-none overflow-hidden"
           style={{ minWidth: "3rem" }}
         >
           {linesArr.map((num) => (
@@ -59,17 +60,16 @@ const TextInput: React.FC<TextInputProps> = ({
         </div>
 
         {/* テキスト入力エリア */}
-        <textarea
-          className="w-full p-3 border-none rounded-md focus:outline-none min-h-[150px] leading-6"
+        <Textarea
+          className="w-full p-3 border-none rounded-none focus-visible:ring-0 min-h-[550px] leading-6 resize-y"
           value={text}
           onChange={handleChange}
           onScroll={handleTextareaScroll}
           placeholder="テキストを入力してください..."
-          style={{ resize: "vertical" }}
         />
       </div>
 
-      <div className="text-right text-sm text-gray-500 mt-1">
+      <div className="text-right text-sm text-muted-foreground mt-1">
         残り {remainingChars} 文字
       </div>
     </div>

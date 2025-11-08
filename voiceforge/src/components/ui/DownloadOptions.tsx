@@ -2,12 +2,11 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  ArrowDownTrayIcon,
-  DocumentTextIcon,
-  CodeBracketIcon,
-} from "@heroicons/react/24/solid";
-import { Switch } from "@headlessui/react";
+import { Download, FileText, Code } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import JSZip from "jszip"; // JSZipをインポート
 
 interface TextSegment {
@@ -192,69 +191,52 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-      <h3 className="text-lg font-medium mb-4">ダウンロードオプション</h3>
-
-      <div className="space-y-4">
+    <div className="space-y-4">
         {/* プロジェクト情報入力フィールド */}
         <div className="space-y-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              プロジェクトID
-            </label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="projId">プロジェクトID</Label>
+            <Input
+              id="projId"
               type="text"
               value={projId}
               onChange={handleProjIdChange}
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="プロジェクトIDを入力"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              プロジェクト名
-            </label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="projName">プロジェクト名</Label>
+            <Input
+              id="projName"
               type="text"
               value={projName}
               onChange={handleProjNameChange}
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="プロジェクト名を入力"
             />
           </div>
         </div>
 
         {/* ファイル名プレフィックス設定 */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-medium text-gray-700">
+        <div className="flex items-center justify-between space-x-2">
+          <Label htmlFor="usePrefix" className="text-sm font-medium">
             ファイル名プレフィックス
-          </div>
+          </Label>
           <Switch
+            id="usePrefix"
             checked={usePrefix}
-            onChange={setUsePrefix}
-            className={`${
-              usePrefix ? "bg-blue-500" : "bg-gray-200"
-            } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
-          >
-            <span className="sr-only">プレフィックスを使用</span>
-            <span
-              className={`${
-                usePrefix ? "translate-x-6" : "translate-x-1"
-              } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-            />
-          </Switch>
+            onCheckedChange={setUsePrefix}
+          />
         </div>
 
         {usePrefix && (
-          <div>
-            <input
+          <div className="space-y-2">
+            <Input
               type="text"
               value={prefix}
               onChange={(e) => setPrefix(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="プレフィックス"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               プレフィックス例：{prefix}0001_こんにちは.mp3
             </p>
           </div>
@@ -262,46 +244,33 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
 
         {/* ダウンロードボタン群 */}
         <div className="grid grid-cols-1 gap-2">
-          <button
+          <Button
             onClick={handleDownloadAllAudio}
             disabled={segments.filter((s) => s.audioUrl).length === 0}
-            className={`py-2 px-4 rounded-md flex items-center justify-center ${
-              segments.filter((s) => s.audioUrl).length === 0
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-blue-500 text-white hover:bg-blue-600"
-            }`}
+            className="w-full"
           >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+            <Download className="h-5 w-5 mr-2" />
             全音声をZIPでダウンロード
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleDownloadText}
             disabled={!fullText.trim()}
-            className={`py-2 px-4 rounded-md flex items-center justify-center ${
-              !fullText.trim()
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-green-500 text-white hover:bg-green-600"
-            }`}
+            className="w-full bg-green-500 hover:bg-green-600"
           >
-            <DocumentTextIcon className="h-5 w-5 mr-2" />
+            <FileText className="h-5 w-5 mr-2" />
             テキストをダウンロード
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleDownloadJSON}
             disabled={segments.length === 0}
-            className={`py-2 px-4 rounded-md flex items-center justify-center ${
-              segments.length === 0
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-purple-500 text-white hover:bg-purple-600"
-            }`}
+            className="w-full bg-purple-500 hover:bg-purple-600"
           >
-            <CodeBracketIcon className="h-5 w-5 mr-2" />
+            <Code className="h-5 w-5 mr-2" />
             JSONデータをダウンロード
-          </button>
+          </Button>
         </div>
-      </div>
     </div>
   );
 };

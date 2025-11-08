@@ -1,5 +1,14 @@
 // src/components/ui/VoiceSettings.tsx
 import React, { useState } from "react";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 export interface VoiceSettingsType {
   language: string;
@@ -15,19 +24,42 @@ interface VoiceSettingsProps {
 const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onChange }) => {
   const [settings, setSettings] = useState<VoiceSettingsType>({
     language: "ja-JP",
-    voiceName: "ja-JP-Wavenet-A",
+    voiceName: "ja-JP-Wavenet-D",
     speakingRate: 1.0,
     pitch: 0,
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
-  ) => {
-    const { name, value } = e.target;
+  const handleLanguageChange = (value: string) => {
     const newSettings = {
       ...settings,
-      [name]:
-        name === "speakingRate" || name === "pitch" ? parseFloat(value) : value,
+      language: value,
+    };
+    setSettings(newSettings);
+    onChange(newSettings);
+  };
+
+  const handleVoiceNameChange = (value: string) => {
+    const newSettings = {
+      ...settings,
+      voiceName: value,
+    };
+    setSettings(newSettings);
+    onChange(newSettings);
+  };
+
+  const handleSpeakingRateChange = (value: number[]) => {
+    const newSettings = {
+      ...settings,
+      speakingRate: value[0],
+    };
+    setSettings(newSettings);
+    onChange(newSettings);
+  };
+
+  const handlePitchChange = (value: number[]) => {
+    const newSettings = {
+      ...settings,
+      pitch: value[0],
     };
     setSettings(newSettings);
     onChange(newSettings);
@@ -58,77 +90,69 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onChange }) => {
   };
 
   return (
-    <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-      <h3 className="text-lg font-medium mb-4">音声設定</h3>
-
-      <div className="grid gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            言語
-          </label>
-          <select
-            name="language"
+    <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="language">言語</Label>
+          <Select
             value={settings.language}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onValueChange={handleLanguageChange}
           >
-            <option value="ja-JP">日本語</option>
-            <option value="en-US">英語 (米国)</option>
-          </select>
+            <SelectTrigger id="language">
+              <SelectValue placeholder="言語を選択" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ja-JP">日本語</SelectItem>
+              <SelectItem value="en-US">英語 (米国)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            声の種類
-          </label>
-          <select
-            name="voiceName"
+        <div className="space-y-2">
+          <Label htmlFor="voiceName">声の種類</Label>
+          <Select
             value={settings.voiceName}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onValueChange={handleVoiceNameChange}
           >
-            {voiceOptions[settings.language as keyof typeof voiceOptions].map(
-              (voice) => (
-                <option key={voice.value} value={voice.value}>
-                  {voice.label}
-                </option>
-              )
-            )}
-          </select>
+            <SelectTrigger id="voiceName">
+              <SelectValue placeholder="声の種類を選択" />
+            </SelectTrigger>
+            <SelectContent>
+              {voiceOptions[settings.language as keyof typeof voiceOptions].map(
+                (voice) => (
+                  <SelectItem key={voice.value} value={voice.value}>
+                    {voice.label}
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="space-y-2">
+          <Label htmlFor="speakingRate">
             話速 ({settings.speakingRate.toFixed(1)})
-          </label>
-          <input
-            type="range"
-            name="speakingRate"
-            min="0.25"
-            max="4.0"
-            step="0.05"
-            value={settings.speakingRate}
-            onChange={handleChange}
-            className="w-full"
+          </Label>
+          <Slider
+            id="speakingRate"
+            min={0.25}
+            max={4.0}
+            step={0.05}
+            value={[settings.speakingRate]}
+            onValueChange={handleSpeakingRateChange}
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            ピッチ ({settings.pitch.toFixed(1)})
-          </label>
-          <input
-            type="range"
-            name="pitch"
-            min="-20"
-            max="20"
-            step="1"
-            value={settings.pitch}
-            onChange={handleChange}
-            className="w-full"
+        <div className="space-y-2">
+          <Label htmlFor="pitch">ピッチ ({settings.pitch.toFixed(1)})</Label>
+          <Slider
+            id="pitch"
+            min={-20}
+            max={20}
+            step={1}
+            value={[settings.pitch]}
+            onValueChange={handlePitchChange}
           />
         </div>
-      </div>
     </div>
   );
 };
