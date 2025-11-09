@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowDownTrayIcon } from "@heroicons/react/24/solid";
+import { Download } from "lucide-react";
 
 interface DownloadButtonProps {
   audioUrl: string | null;
@@ -55,7 +55,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
               : "bg-gray-200 text-gray-500 cursor-not-allowed"
           }`}
         >
-          <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+          <Download className="h-5 w-5 mr-2" />
           ダウンロード
         </button>
       </div>

@@ -1,5 +1,4 @@
 // src/utils/googleTTS.ts
-import { VoiceSettingsType } from "../components/ui/VoiceSettings";
 
 export interface TTSRequest {
   text: string;

@@ -37,7 +37,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   // テキスト変更検知
   useEffect(() => {
     setNeedsRegeneration(cleanEditedText !== cleanOriginalText);
-  }, [editedText, text]);
+  }, [cleanEditedText, cleanOriginalText]);
 
   // 音声メタデータ処理
   useEffect(() => {
@@ -71,7 +71,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       console.warn("音声バッファリング中 (waiting)");
     };
 
-    const handleError = (e: Event) => {
+    const handleError = () => {
       console.error("音声エラー:", audio.error);
     };
 
@@ -104,7 +104,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       if (playPromiseRef.current) {
         try {
           await playPromiseRef.current;
-        } catch (e) {
+        } catch {
           // play()が中断された場合は無視
         }
         playPromiseRef.current = null;
@@ -146,7 +146,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       if (playPromiseRef.current) {
         try {
           await playPromiseRef.current;
-        } catch (e) {
+        } catch {
           // play()が失敗した場合は無視
         }
         playPromiseRef.current = null;
@@ -175,7 +175,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     if (playPromiseRef.current) {
       try {
         await playPromiseRef.current;
-      } catch (e) {
+      } catch {
         // play()が失敗した場合は無視
       }
       playPromiseRef.current = null;
@@ -200,20 +200,34 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   }, []);
 
   // ダウンロード処理
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!audioUrl) return;
 
-    const sanitizedFileName = editedText
-      .replace(/[\\/:*?"<>|]/g, "_")
-      .substring(0, 50)
-      .trim();
+    try {
+      // Blob URLからBlobを取得
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
 
-    const link = document.createElement("a");
-    link.href = audioUrl;
-    link.download = `${sanitizedFileName}.mp3`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const sanitizedFileName = editedText
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .substring(0, 50)
+        .trim();
+
+      // BlobからオブジェクトURLを作成してダウンロード
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${sanitizedFileName}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // メモリ解放
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      console.error("ダウンロードエラー:", error);
+      alert("音声のダウンロードに失敗しました");
+    }
   };
 
   // テキスト変更ハンドラ

@@ -11,10 +11,20 @@ import {
 import VoiceSettings, { VoiceSettingsType } from "./VoiceSettings";
 import DownloadOptions from "./DownloadOptions";
 
+interface TextSegment {
+  id: string;
+  text: string;
+  audioUrl: string | null;
+  isLoading: boolean;
+  duration: number;
+  slideNumber?: number;
+  slideOrder?: number;
+}
+
 interface SettingsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  segments: any[];
+  segments: TextSegment[];
   fullText: string;
   voiceSettings: VoiceSettingsType;
   onSettingsChange: (settings: VoiceSettingsType) => void;

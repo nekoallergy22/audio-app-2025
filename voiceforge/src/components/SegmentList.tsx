@@ -1,9 +1,8 @@
 // src/components/SegmentList.tsx
-import { useState } from "react";
 import dynamic from "next/dynamic";
 import { TextSegment } from "../types";
 
-const AudioPlayer = dynamic(() => import("./ui/AudioPlayer"), {
+const AudioPlayer = dynamic(() => import("./ui/audio-player"), {
   ssr: false,
 });
 
@@ -11,12 +10,16 @@ interface SegmentListProps {
   segments: TextSegment[];
   onDurationChange: (id: string, duration: number) => void;
   onSlideInfoChange: (id: string, slideNumber: number) => void;
+  onTextEdit: (id: string, text: string) => void;
+  onRegenerateAudio: (id: string, text: string) => Promise<void>;
 }
 
 export default function SegmentList({
   segments,
   onDurationChange,
   onSlideInfoChange,
+  onTextEdit,
+  onRegenerateAudio,
 }: SegmentListProps) {
   // タブ移動のハンドラ
   const handleTabToNext = (currentIndex: number) => {
@@ -41,7 +44,7 @@ export default function SegmentList({
             key={segment.id}
             id={segment.id}
             audioUrl={segment.audioUrl}
-            text={segment.text.replace(/^\n+/, "")}
+            text={segment.editedText.replace(/^\n+/, "")}
             isLoading={segment.isLoading}
             segmentNumber={index + 1}
             onDurationChange={(duration) =>
@@ -53,6 +56,9 @@ export default function SegmentList({
             slideNumber={segment.slideNumber}
             slideOrder={segment.slideOrder}
             onTabToNext={() => handleTabToNext(index)}
+            editedText={segment.editedText}
+            onTextEdit={onTextEdit}
+            onRegenerateAudio={onRegenerateAudio}
           />
         ))}
       </div>

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { TextSegment, VoiceSettingsType } from "../types";
 import { validateText, validateVoiceSettings } from "../utils/validators";
-import { SpeakerWaveIcon } from "@heroicons/react/24/solid";
+import { Volume2 } from "lucide-react";
 
 interface VoiceGeneratorProps {
   inputText: string;
@@ -102,7 +102,8 @@ export default function VoiceGenerator({
       // 新しいセグメントの配列を作成
       const newSegments: TextSegment[] = segments.map((text, index) => ({
         id: `segment-${Date.now()}-${index}`,
-        text,
+        originalText: text,
+        editedText: text,
         audioUrl: null,
         isLoading: true,
         duration: 0,
@@ -113,7 +114,7 @@ export default function VoiceGenerator({
       // 各セグメントごとに音声を生成
       for (let i = 0; i < newSegments.length; i++) {
         try {
-          const audioUrl = await generateVoice(newSegments[i].text);
+          const audioUrl = await generateVoice(newSegments[i].editedText);
 
           // 特定のセグメントのaudioUrlを更新
           newSegments[i].audioUrl = audioUrl;
@@ -151,7 +152,7 @@ export default function VoiceGenerator({
         "生成中..."
       ) : (
         <>
-          <SpeakerWaveIcon className="h-5 w-5 mr-2" />
+          <Volume2 className="h-5 w-5 mr-2" />
           音声を生成
         </>
       )}

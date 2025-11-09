@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import JSZip from "jszip"; // JSZipをインポート
+import { VoiceSettingsType } from "./VoiceSettings";
 
 interface TextSegment {
   id: string;
@@ -22,7 +23,7 @@ interface TextSegment {
 interface DownloadOptionsProps {
   segments: TextSegment[];
   fullText: string;
-  voiceSettings: any;
+  voiceSettings: VoiceSettingsType;
 }
 
 const DownloadOptions: React.FC<DownloadOptionsProps> = ({
@@ -60,16 +61,26 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({
     try {
       for (let i = 0; i < validSegments.length; i++) {
         const segment = validSegments[i];
-        const response = await fetch(segment.audioUrl!);
-        const blob = await response.blob();
+        try {
+          const response = await fetch(segment.audioUrl!);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const blob = await response.blob();
 
-        const segmentNumber = (i + 1).toString().padStart(4, "0");
-        const cleanText = segment.text.replace(/^\n+/, "");
-        const fileName = usePrefix
-          ? `${prefix}${segmentNumber}_${cleanText.substring(0, 20)}.mp3`
-          : `${segmentNumber}_${cleanText.substring(0, 30)}.mp3`;
+          const segmentNumber = (i + 1).toString().padStart(4, "0");
+          const cleanText = segment.text.replace(/^\n+/, "");
+          const sanitizedText = cleanText.replace(/[\\/:*?"<>|]/g, "_");
+          const fileName = usePrefix
+            ? `${prefix}${segmentNumber}_${sanitizedText.substring(0, 20)}.mp3`
+            : `${segmentNumber}_${sanitizedText.substring(0, 30)}.mp3`;
 
-        zip.file(fileName, blob);
+          zip.file(fileName, blob);
+        } catch (fetchError) {
+          console.error(`セグメント ${i + 1} の取得エラー:`, fetchError);
+          // エラーが発生したセグメントをスキップして続行
+          continue;
+        }
       }
 
       const content = await zip.generateAsync({ type: "blob" });
